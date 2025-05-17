@@ -1,9 +1,9 @@
 from __future__ import annotations # Para usar tipos sin comillas si es necesario
-from typing import List, Dict, Optional, Union, Tuple # Añadir Any si se usa como placeholder
+from typing import List, Dict, Optional, Union, Tuple, Any # Ensure Any is imported
 from uuid import UUID
 from datetime import datetime
 
-from pydantic import BaseModel, Field, ConfigDict # Import ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator # Import field_validator
 
 from app.core.enums import Color, GameState, SquareType, MoveResultType # Importar nuestras enums
 
@@ -49,11 +49,61 @@ class SquareInfo(TunedModel):
 # --- Esquemas para Solicitudes (Requests) de la API ---
 
 class CreateGameRequest(TunedModel):
-    max_players: int = Field(default=4, ge=2, le=8) # Asumiendo que podrías extender a 6 u 8
+    max_players: int = Field(default=4, ge=2, le=8) 
+    creator_user_id: str = Field(..., min_length=1, description="ID del usuario que crea la partida")
+    creator_color: Color = Field(..., description="Color elegido por el creador (e.g., 'RED', 'GREEN', 0, 1)")
+
+    @field_validator('creator_color', mode='before')
+    @classmethod
+    def validate_creator_color(cls, v: Any) -> Color:
+        if isinstance(v, Color):
+            return v
+        if isinstance(v, str):
+            try:
+                return Color(v.upper()) # Handles "RED", "red", etc.
+            except ValueError:
+                valid_colors_str = [e.value for e in Color]
+                raise ValueError(f"Invalid color string: '{v}'. Must be one of {valid_colors_str} or a valid integer (0-3).")
+        if isinstance(v, int):
+            try:
+                # Map integer to enum member by value.
+                # Since Color enum values are now strings ("RED", "GREEN", ...),
+                # we need to map int to the corresponding Color member.
+                # Assumes RED=0, GREEN=1, BLUE=2, YELLOW=3 mapping logic.
+                if v == 0: return Color.RED
+                if v == 1: return Color.GREEN
+                if v == 2: return Color.BLUE
+                if v == 3: return Color.YELLOW
+                raise ValueError(f"Invalid integer for color: {v}. Must be 0-3.")
+            except ValueError as e:
+                 raise ValueError(str(e)) from e
+        raise TypeError(f"Invalid type for Color: {type(v)}. Expected string, int, or Color enum member.")
 
 class JoinGameRequest(TunedModel):
-    user_id: str = Field(..., min_length=1)
-    color: Color # El jugador elige un color (int o string según como lo manejes en el endpoint)
+    user_id: str = Field(..., min_length=1, description="ID del usuario que se une")
+    color: Color = Field(..., description="Color solicitado por el usuario (e.g., 'RED', 'GREEN', 0, 1)")
+
+    @field_validator('color', mode='before')
+    @classmethod
+    def validate_join_color(cls, v: Any) -> Color:
+        if isinstance(v, Color):
+            return v
+        if isinstance(v, str):
+            try:
+                return Color(v.upper())
+            except ValueError:
+                valid_colors_str = [e.value for e in Color]
+                raise ValueError(f"Invalid color string: '{v}'. Must be one of {valid_colors_str} or a valid integer (0-3).")
+        if isinstance(v, int):
+            try:
+                if v == 0: return Color.RED
+                if v == 1: return Color.GREEN
+                if v == 2: return Color.BLUE
+                if v == 3: return Color.YELLOW
+                raise ValueError(f"Invalid integer for color: {v}. Must be 0-3.")
+            except ValueError as e:
+                raise ValueError(str(e)) from e
+        raise TypeError(f"Invalid type for Color: {type(v)}. Expected string, int, or Color enum member.")
 
 class MovePieceRequest(TunedModel):
     """
@@ -99,10 +149,10 @@ class MoveOutcome(TunedModel):
     """Resultado de una acción de movimiento o quema de ficha."""
     success: bool
     message: str
-    move_result_type: MoveResultType
-    # Opcionalmente, se podría devolver el GameSnapshot completo aquí
-    # O solo los cambios relevantes.
-    # game_state: Optional[GameSnapshot] # Decidir si se envía todo el snapshot o no
+    move_result_type: Optional[MoveResultType] = None # Make it optional or ensure a valid default
+    # If it must be present, ensure a valid default is always provided by the handler
+    # For now, making it optional is safer if "action_failed" is not always a valid MoveResultType member.
+    # Or, ensure MoveResultType always has a default like ACTION_FAILED.
 
 class GameSnapshot(TunedModel):
     """Representación completa del estado del juego para los clientes."""

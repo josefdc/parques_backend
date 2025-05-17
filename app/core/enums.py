@@ -1,19 +1,21 @@
 from enum import Enum
 
-class Color(Enum):
+class Color(str, Enum): # Inherit from str
     """
     Enumeración para los colores de los jugadores.
-    Los valores pueden ser útiles para la lógica de turnos o indexación.
+    Los valores son strings para ser explícitos en API requests/responses.
     """
-    RED = 0
-    GREEN = 1
-    BLUE = 2
-    YELLOW = 3
+    RED = "RED"
+    GREEN = "GREEN"
+    BLUE = "BLUE"
+    YELLOW = "YELLOW"
     # Podrías añadir más si decides extender a 6 u 8 jugadores en el futuro
-    # ORANGE = 4
-    # PURPLE = 5
+    # ORANGE = "ORANGE"
+    # PURPLE = "PURPLE"
 
     def __str__(self):
+        # Returns lowercase name (e.g., "red") if str() is called on enum member.
+        # Pydantic with use_enum_values=True will use the value (e.g., "RED") for serialization.
         return self.name.lower()
 
 class SquareType(Enum):
@@ -65,6 +67,7 @@ class MoveResultType(Enum):
     INVALID_ROLL = "invalid_roll"     # El tiro de dados no permite mover la ficha seleccionada
     NOT_YOUR_TURN = "not_your_turn"
     THREE_PAIRS_BURN = "three_pairs_burn" # Quemada por tres pares
+    ACTION_FAILED = "action_failed"   # Default for unspecified errors
 
     def __str__(self):
         return self.value

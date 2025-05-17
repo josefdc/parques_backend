@@ -1,10 +1,8 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, List, Any # Any será reemplazado por GameAggregate
+from typing import Optional, List, TYPE_CHECKING
 import uuid
 
-# Para evitar importación circular en tiempo de ejecución, usamos un forward reference
-# como string o el bloque TYPE_CHECKING
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.models.domain.game import GameAggregate
 
@@ -16,7 +14,7 @@ class GameRepository(ABC):
     """
 
     @abstractmethod
-    async def get_by_id(self, game_id: uuid.UUID) -> Optional[GameAggregate]:
+    async def get_by_id(self, game_id: uuid.UUID) -> Optional['GameAggregate']:
         """
         Obtiene una partida por su ID.
         Retorna la partida o None si no se encuentra.
@@ -24,7 +22,7 @@ class GameRepository(ABC):
         pass
 
     @abstractmethod
-    async def save(self, game: GameAggregate) -> None:
+    async def save(self, game: 'GameAggregate') -> None:
         """
         Guarda (crea o actualiza) una partida en el repositorio.
         """
@@ -39,7 +37,7 @@ class GameRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_all_active(self) -> List[GameAggregate]:
+    async def get_all_active(self) -> List['GameAggregate']:
         """
         Obtiene todas las partidas activas o en espera.
         (Podría ser útil para un lobby o para limpieza).

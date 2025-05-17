@@ -2,7 +2,7 @@ from __future__ import annotations
 import uuid
 import asyncio # Para asyncio.Lock
 from collections import deque # Para turn_order
-from datetime import datetime
+from datetime import datetime # Ensure datetime is imported
 from typing import List, Dict, Optional, Deque, TYPE_CHECKING, Tuple
 
 from app.core.enums import GameState, Color
@@ -39,8 +39,11 @@ class GameAggregate:
     lock: asyncio.Lock 
 
     # Lista de eventos para auditoría o para enviar a los clientes
-    log: List[GameEventPydantic] # Changed type annotation
+    log: List[GameEventPydantic] 
     winner: Optional[Color] # Para almacenar el ganador
+    
+    # --- ATRIBUTOS DE TIMESTAMP ---
+    created_at: datetime
     last_activity_at: datetime # Para rastrear la actividad
 
 
@@ -58,9 +61,13 @@ class GameAggregate:
         self.current_player_doubles_count = 0 
         self.max_players = max_players_limit
         self.lock = asyncio.Lock()
-        self.log = [] # Initialized as an empty list
+        self.log = [] 
         self.winner = None
-        self.last_activity_at = datetime.now()
+        
+        # --- INICIALIZAR TIMESTAMPS ---
+        self.created_at = datetime.now()
+        self.last_activity_at = self.created_at # Inicializar last_activity_at con created_at
+        
         self._add_game_event("game_created", {"game_id": str(self.id), "max_players": self.max_players})
 
 
@@ -79,6 +86,13 @@ class GameAggregate:
         if len(self.players) >= self.max_players:
             # Log o excepción: Partida llena
             return False
+        # Ensure player.color is an enum instance for dictionary key consistency
+        if not isinstance(player.color, Color):
+            # This should ideally not happen if type hints are enforced earlier
+            # or if conversion to enum instance is done at the boundary (e.g., API layer)
+            # For robustness, one might convert or raise here, but assuming it's Color enum by now.
+            pass
+
         if player.color in self.players:
             # Log o excepción: Color ya tomado
             return False
@@ -156,6 +170,8 @@ class GameAggregate:
         self.turn_order.rotate(-1) # Mueve el jugador actual al final de la cola
         self.current_turn_color = self.turn_order[0] # El nuevo jugador al frente es el actual
         self.current_player_doubles_count = 0 # Resetear contador de pares para el nuevo turno
+        self.last_dice_roll = None # Limpiar el último tiro cuando pasa el turno
+        self.dice_roll_count = 0   # Resetear contador de tiros para el nuevo jugador
 
         # Asegurar que el contador de pares del nuevo jugador actual esté limpio
         if self.current_turn_color and self.players[self.current_turn_color]:

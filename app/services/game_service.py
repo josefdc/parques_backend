@@ -2,19 +2,21 @@ from __future__ import annotations
 import uuid
 from typing import Optional, Tuple, List, Dict, TYPE_CHECKING
 
-from app.core.enums import Color, GameState, MoveResultType, SquareType # Added SquareType
+from app.core.enums import Color, GameState, MoveResultType, SquareType
 from app.repositories.base_repository import GameRepository
 from app.rules.move_validator import MoveValidator
 from app.rules.dice import Dice
 from app.models.domain.player import Player, PIECES_PER_PLAYER
-# GameAggregate se importará con TYPE_CHECKING para evitar ciclos
-# o se puede hacer una importación local dentro de los métodos si es muy problemático.
+
+# --- Importa las constantes y GameAggregate a nivel de módulo ---
+from app.models.domain.game import GameAggregate, MIN_PLAYERS, MAX_PLAYERS
 
 if TYPE_CHECKING:
-    from app.models.domain.game import GameAggregate, MIN_PLAYERS, MAX_PLAYERS
     from app.models.domain.piece import Piece
     from app.models.domain.square import SquareId
-    from app.models.schemas import GameEventPydantic # Asegúrate de crear este archivo/clase más tarde
+    from app.models.schemas import GameEventPydantic
+    # Ensure GameAggregate is imported for type hinting if not already
+    # from app.models.domain.game import GameAggregate
 
 class GameServiceError(Exception):
     """Excepción base para errores del servicio de juego."""
@@ -54,14 +56,11 @@ class GameService:
         Crea una nueva partida de Parqués.
         El creador se añade automáticamente como el primer jugador.
         """
-        from app.models.domain.game import GameAggregate, MAX_PLAYERS # Importación local
-        
         game_id = uuid.uuid4()
-        # Usa el constructor simplificado de GameAggregate
         game = GameAggregate(game_id=game_id, max_players_limit=max_players) 
         
         creator_player = Player(user_id=creator_user_id, color=creator_color)
-        if not game.add_player(creator_player): # add_player ya está en GameAggregate
+        if not game.add_player(creator_player):
             raise GameServiceError("No se pudo añadir al jugador creador a la nueva partida.")
 
         await self._repository.save(game)
@@ -108,8 +107,6 @@ class GameService:
         if not game:
             raise GameNotFoundError(game_id)
         
-        from app.models.domain.game import MIN_PLAYERS # Importación local para MIN_PLAYERS
-
         # Verificar que el usuario que intenta iniciar está en el juego
         player_can_start = False
         for p_color, p_obj in game.players.items():
@@ -125,10 +122,8 @@ class GameService:
                 raise GameServiceError("La partida no está lista para iniciar o ya ha comenzado.")
             if len(game.players) < MIN_PLAYERS: 
                 raise GameServiceError(f"Se necesitan al menos {MIN_PLAYERS} jugadores para iniciar.")
-            
-            if not game.start_game(): # El método en GameAggregate maneja la transición
+            if not game.start_game():
                 raise GameServiceError("Falló la transición de estado al iniciar la partida internamente.")
-            
             print(f"GameService: Partida {game_id} iniciada. Primer turno: {game.current_turn_color.name if game.current_turn_color else 'N/A'}")
             await self._repository.save(game)
         return game
@@ -150,42 +145,37 @@ class GameService:
         if not game:
             raise GameNotFoundError(game_id)
 
-        player_color = None
-        player_object = None
-        for color_enum, p_obj in game.players.items():
-            if p_obj.user_id == user_id:
-                player_color = color_enum
-                player_object = p_obj
-                break
-        
-        if not player_color or not player_object:
-            raise PlayerNotInGameError(user_id, game_id)
+        player_color, player_object = self._get_player_from_user_id(game, user_id)
 
         async with game.lock:
             if game.state != GameState.IN_PROGRESS:
                 raise GameServiceError("La partida no está en curso.")
             if game.current_turn_color != player_color:
                 raise NotPlayerTurnError(user_id, game_id)
+            # Check if player can roll:
+            # Player can roll if dice_roll_count is 0 (first roll of their turn part)
+            # OR if they got pairs and are eligible for another roll (consecutive_pairs_count is 1 or 2)
+            if game.dice_roll_count > 0 and not (player_object.consecutive_pairs_count > 0 and player_object.consecutive_pairs_count < 3):
+                raise GameServiceError("Ya has lanzado los dados en este turno o debes mover primero.")
 
             d1, d2 = self._dice.roll()
-            game._add_game_event("dice_rolled", {"player_color": player_color.name, "dice": [d1, d2]}) # Usar GameEventPydantic luego
+            game.last_dice_roll = (d1, d2) # GUARDAR EL TIRO
+            game.dice_roll_count += 1 # Incrementar contador de tiros en el turno
 
-            # Validar las consecuencias inmediatas del tiro (pares, tres pares)
+            game._add_game_event("dice_rolled", {"player_color": player_color.name, "dice": [d1, d2]})
+
             roll_validation_result = self._validator.validate_and_process_roll(game, player_color, d1, d2)
 
             possible_moves = {}
             if roll_validation_result != MoveResultType.THREE_PAIRS_BURN:
-                # Si no son tres pares (que termina el turno o requiere acción de quemar), calcular movimientos
                 possible_moves = self._validator.get_possible_moves(game, player_color, d1, d2)
                 # Log if no moves are possible and it's not a three-pairs burn scenario
-                if not possible_moves: 
+                # and player has pieces not in jail (meaning they are not forced to pass due to all pieces jailed)
+                if not possible_moves and player_object.get_jailed_pieces_count() < PIECES_PER_PLAYER:
                     game._add_game_event("no_valid_moves", {"player_color": player_color.name, "dice": [d1, d2]})
-                    # The turn will be passed by the controller/API layer by calling pass_player_turn
-                    # if this condition is met.
-
+                    # El jugador deberá pasar el turno. La API llamará a pass_player_turn.
 
             await self._repository.save(game)
-            print(f"GameService: Jugador {user_id} ({player_color.name}) lanzó {d1}-{d2} en partida {game_id}. Resultado: {roll_validation_result.name}")
         
         return game, (d1, d2), roll_validation_result, possible_moves
 
@@ -195,8 +185,8 @@ class GameService:
         user_id: str,
         piece_uuid_str: str, # UUID de la ficha a mover
         target_square_id_from_player: SquareId, # El destino que el jugador eligió de los `possible_moves`
-        steps_taken_for_move: int, # Cuántos pasos del dado se usaron (d1, d2, o d1+d2)
-        original_dice_roll: Tuple[int, int] # (d1, d2) del tiro original
+        steps_taken_for_move: int # Cuántos pasos del dado se usaron (d1, d2, o d1+d2)
+        # original_dice_roll ya no se pasa como parámetro
     ) -> GameAggregate:
         """
         Mueve una ficha seleccionada por el jugador a un destino elegido.
@@ -210,13 +200,19 @@ class GameService:
 
         current_player = game.get_current_player()
         if not current_player or current_player.user_id != user_id:
-            # Esto también cubre si no es el turno del jugador, ya que current_player sería None o diferente.
             raise NotPlayerTurnError(user_id, game_id)
+        
+        if game.state != GameState.IN_PROGRESS:
+            raise GameServiceError("La partida no está en curso.")
+        
+        if not game.last_dice_roll: # No se ha tirado en este turno (o el estado es inválido)
+             raise GameServiceError("Debes lanzar los dados antes de mover.")
 
         piece_to_move = current_player.get_piece_by_uuid(piece_uuid_str)
         if not piece_to_move:
             raise GameServiceError(f"Ficha {piece_uuid_str} no encontrada para el jugador {user_id}.")
 
+        original_dice_roll = game.last_dice_roll # USAR EL TIRO GUARDADO
         is_roll_pairs = (original_dice_roll[0] == original_dice_roll[1])
         
         move_result_type, validated_target_id = self._validator._validate_single_move_attempt(
@@ -230,7 +226,7 @@ class GameService:
            move_result_type in [MoveResultType.INVALID_PIECE, MoveResultType.INVALID_ROLL, MoveResultType.OUT_OF_BOUNDS]:
             if move_result_type == MoveResultType.OUT_OF_BOUNDS and piece_to_move.position is not None:
                  current_square_obj = game.board.get_square(piece_to_move.position)
-                 if current_square_obj and current_square_obj.type == SquareType.META: # SquareType.META needs import
+                 if current_square_obj and current_square_obj.type == SquareType.META:
                      raise GameServiceError("Se requiere un tiro exacto para llegar al cielo y este movimiento se pasa.", MoveResultType.EXACT_ROLL_NEEDED)
             
             raise GameServiceError(f"Movimiento inválido o no permitido: {move_result_type.name}", move_result_type)
@@ -245,11 +241,12 @@ class GameService:
                         old_square = game.board.get_square(current_board_position_id)
                         if old_square: old_square.remove_piece(piece_to_move)
                     
-                    piece_to_move.is_in_jail = False
-                    salida_square.add_piece(piece_to_move)
+                    piece_to_move.is_in_jail = False # Actualizar estado de la ficha
+                    piece_to_move.move_to(target_square_id_from_player) # Actualizar posición de la ficha
+                    salida_square.add_piece(piece_to_move) # Añadir al nuevo square
                     game._add_game_event("piece_left_jail", {"player": current_player.color.name, "piece_id": str(piece_to_move.id), "target_square": target_square_id_from_player})
                     
-                    game.dice_roll_count = 0 
+                    # game.dice_roll_count = 0 # This will be handled by end-of-turn logic
                 else:
                     raise GameServiceError("Error interno: Casilla de salida no encontrada.")
 
@@ -260,16 +257,22 @@ class GameService:
                 captured_piece_ids = []
                 pieces_to_send_to_jail = list(target_square.occupants)
                 for occ_piece in pieces_to_send_to_jail:
-                    if occ_piece.color != current_player.color:
+                    if occ_piece.color != current_player.color: # Cannot capture own pieces
                         target_square.remove_piece(occ_piece)
                         occ_piece.send_to_jail()
+                        # Need to get the player of the captured piece to update their pieces_in_jail count if tracked
+                        captured_player = game.get_player(occ_piece.color)
+                        if captured_player:
+                            # Assuming Player object has a way to notify it or its pieces are jailed
+                            pass # Logic for updating captured_player if needed
                         captured_piece_ids.append(str(occ_piece.id))
                 
                 if current_board_position_id:
                     old_square = game.board.get_square(current_board_position_id)
                     if old_square: old_square.remove_piece(piece_to_move)
                 
-                target_square.add_piece(piece_to_move)
+                piece_to_move.move_to(target_square_id_from_player) # Actualizar posición de la ficha
+                target_square.add_piece(piece_to_move) # Añadir al nuevo square
                 game._add_game_event("piece_captured", {
                     "player": current_player.color.name, "piece_id": str(piece_to_move.id), 
                     "target_square": target_square_id_from_player, "captured_ids": captured_piece_ids
@@ -283,12 +286,11 @@ class GameService:
                 piece_to_move.move_to(target_square_id_from_player, is_cielo=True)
                 game._add_game_event("piece_reached_cielo", {"player": current_player.color.name, "piece_id": str(piece_to_move.id)})
 
-                if current_player.check_win_condition():
+                if current_player.check_win_condition(): # This should update player.has_won
                     game.winner = current_player.color
                     game.state = GameState.FINISHED
                     game._add_game_event("game_won", {"player": current_player.color.name})
-                    await self._repository.save(game)
-                    return game
+                    # No further turn logic if game is won
             
             elif move_result_type == MoveResultType.OK:
                 target_square = game.board.get_square(target_square_id_from_player)
@@ -298,27 +300,43 @@ class GameService:
                     old_square = game.board.get_square(current_board_position_id)
                     if old_square: old_square.remove_piece(piece_to_move)
                 
-                target_square.add_piece(piece_to_move)
+                piece_to_move.move_to(target_square_id_from_player) # Actualizar posición de la ficha
+                target_square.add_piece(piece_to_move) # Añadir al nuevo square
                 game._add_game_event("piece_moved", {"player": current_player.color.name, "piece_id": str(piece_to_move.id), "from": current_board_position_id, "to": target_square_id_from_player})
 
-            else:
+            else: # Should not happen if validation is correct
                 raise GameServiceError(f"Resultado de movimiento no manejado después de la validación: {move_result_type.name}", move_result_type)
 
-            if game.state == GameState.IN_PROGRESS:
-                repeats_turn_for_pairs = is_roll_pairs and \
-                                        move_result_type != MoveResultType.JAIL_EXIT_SUCCESS and \
-                                        current_player.consecutive_pairs_count < 3 
+            # --- Refined end-of-turn logic ---
+            game_ended_by_win = (game.state == GameState.FINISHED)
 
-                if repeats_turn_for_pairs:
-                    game.dice_roll_count = 0
+            if not game_ended_by_win:
+                player_continues_turn = False
+
+                if move_result_type == MoveResultType.JAIL_EXIT_SUCCESS and is_roll_pairs:
+                    # Salió de cárcel con pares -> Vuelve a tirar.
+                    # player.consecutive_pairs_count NO se resetea (handled by validate_and_process_roll).
+                    # game.current_player_doubles_count NO se resetea (handled by validate_and_process_roll).
+                    game.dice_roll_count = 0 # Permite nuevo tiro
+                    player_continues_turn = True
+                    game._add_game_event("player_rolls_again_after_jail_exit", {"player": current_player.color.name})
+                
+                elif is_roll_pairs and current_player.consecutive_pairs_count < 3 and move_result_type != MoveResultType.JAIL_EXIT_SUCCESS:
+                    # Sacó pares (1ro o 2do) y no fue salida de cárcel (ya manejado arriba) -> Repite turno.
+                    # player.consecutive_pairs_count NO se resetea.
+                    # game.current_player_doubles_count NO se resetea.
+                    game.dice_roll_count = 0 # Permite nuevo tiro
+                    player_continues_turn = True
                     game._add_game_event("player_repeats_turn_for_pairs", {"player": current_player.color.name})
-                elif move_result_type == MoveResultType.JAIL_EXIT_SUCCESS and is_roll_pairs:
-                     game.dice_roll_count = 0
-                     game._add_game_event("player_rolls_again_after_jail_exit", {"player": current_player.color.name})
-                else:
-                    current_player.reset_consecutive_pairs()
-                    game.next_turn()
 
+                if not player_continues_turn:
+                    # El turno pasa al siguiente jugador.
+                    current_player.reset_consecutive_pairs() # Jugador actual pierde racha de pares.
+                    game.next_turn() # Esto resetea game.current_player_doubles_count
+                                     # y actualiza current_turn_color.
+                    game.last_dice_roll = None # Limpiar el tiro usado para el turno que termina.
+                    game.dice_roll_count = 0 # Reset para el próximo jugador.
+            
             await self._repository.save(game)
         return game
 
@@ -410,11 +428,19 @@ class GameService:
             current_player.reset_consecutive_pairs()
             
             # Advance to the next player.
-            # game.next_turn() also resets game.current_player_doubles_count.
-            game.next_turn()
+            game.next_turn() # game.next_turn() also resets game.current_player_doubles_count.
+            game.last_dice_roll = None # Clear the roll as the turn is passed.
+            game.dice_roll_count = 0 # Reset for the next player.
 
             await self._repository.save(game)
         
         return game
+
+    def _get_player_from_user_id(self, game: GameAggregate, user_id: str) -> Tuple[Color, Player]:
+        """Helper para obtener el color y objeto del jugador a partir de su user_id."""
+        for color_enum, p_obj in game.players.items():
+            if p_obj.user_id == user_id:
+                return color_enum, p_obj
+        raise PlayerNotInGameError(user_id, game.id)
 
     # --- Otros métodos podrían ser necesarios (ej. get_game_state, etc.) ---
