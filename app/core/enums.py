@@ -1,3 +1,4 @@
+#app/core/enums.py
 from enum import Enum
 
 class Color(str, Enum): # Inherit from str

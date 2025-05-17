@@ -1,3 +1,4 @@
+#app/rules/move_validator.py
 from __future__ import annotations
 from typing import Tuple, Optional, TYPE_CHECKING, List, Dict # Añadir List y Dict
 

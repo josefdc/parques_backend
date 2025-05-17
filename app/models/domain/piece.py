@@ -1,3 +1,4 @@
+#app/models/domain/piece.py
 import uuid
 from typing import Union, Tuple, Optional, Any, TYPE_CHECKING
 

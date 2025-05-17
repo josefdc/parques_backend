@@ -1,3 +1,4 @@
+#app/models/schemas.py
 from __future__ import annotations # Para usar tipos sin comillas si es necesario
 from typing import List, Dict, Optional, Union, Tuple, Any # Ensure Any is imported
 from uuid import UUID

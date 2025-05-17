@@ -1,3 +1,4 @@
+#app/models/domain/piece.py
 from __future__ import annotations # Necesario para usar 'Piece' sin comillas en Python < 3.9-3.10
                                  # En Python 3.10+ es el comportamiento por defecto.
                                  # Para versiones más antiguas, o si prefieres ser explícito,

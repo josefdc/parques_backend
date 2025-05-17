@@ -1,3 +1,4 @@
+#app/models/domain/piece.py
 from __future__ import annotations
 from typing import List, TYPE_CHECKING, Optional
 

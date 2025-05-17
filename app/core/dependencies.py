@@ -1,3 +1,4 @@
+#app/core/dependencies.py
 from typing import Annotated
 from fastapi import Depends
 
