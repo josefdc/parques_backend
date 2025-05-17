@@ -3,7 +3,7 @@ name = "parques_backend"
 version = "0.1.0"
 description = "Backend para el juego de Parqués Distribuido"
 authors = [
-    {name = "Tu Nombre", email = "tu@email.com"},
+    {name = "SD dream team", email = "jose.duarte@utp.edu.co"},
 ]
 dependencies = [
     "fastapi",
@@ -14,7 +14,7 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 
-[project.optional-dependencies] # <--- CONSERVA ESTA
+[project.optional-dependencies] 
 dev = [
     "pytest",
     "pytest-asyncio",
@@ -27,12 +27,12 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# --- AÑADE O MODIFICA ESTA SECCIÓN ---
+
 [tool.hatch.build.targets.wheel]
 # Indica a Hatchling que el paquete principal a incluir en el wheel
 # es el contenido del directorio 'app'.
 packages = ["app"]
-# ------------------------------------
+
 
 [tool.ruff]
 line-length = 88
@@ -55,12 +55,3 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
-# ELIMINA LA SIGUIENTE SECCIÓN DUPLICADA:
-# [project.optional-dependencies]
-# dev = [
-#     "pytest",
-#     "pytest-asyncio", # Para pruebas asíncronas
-#     "httpx",          # Cliente HTTP asíncrono para pruebas de API
-#     "mypy",           # Chequeo de tipos estático
-#     "ruff",           # Linter y formateador rápido
-# ]
