@@ -1,7 +1,7 @@
-"""Domain model for the Parqués game aggregate.
+"""Modelo de dominio para el agregado de juego de Parqués.
 
-Defines the GameAggregate class, which encapsulates the full state and logic
-of a Parqués game, including player management, turn order, and event logging.
+Define la clase GameAggregate, que encapsula el estado y lógica completa
+de una partida de Parqués, incluyendo gestión de jugadores, turnos y eventos.
 """
 from __future__ import annotations
 import uuid
@@ -21,10 +21,9 @@ MIN_PLAYERS = 2
 MAX_PLAYERS = 4
 
 class GameAggregate:
-    """Represents the complete state of a Parqués game.
+    """Representa el estado completo de una partida de Parqués.
 
-    This is the root aggregate in DDD terminology. It manages players, board,
-    turn order, game state, and event logging.
+    Administra jugadores, tablero, turnos, estado del juego y eventos.
     """
     id: uuid.UUID
     state: GameState
@@ -43,11 +42,11 @@ class GameAggregate:
     last_activity_at: datetime
 
     def __init__(self, game_id: uuid.UUID, max_players_limit: int = MAX_PLAYERS) -> None:
-        """Initializes a new game aggregate.
+        """Inicializa un nuevo agregado de juego.
 
         Args:
-            game_id: The unique identifier for the game.
-            max_players_limit: The maximum number of players allowed.
+            game_id: Identificador único del juego.
+            max_players_limit: Máximo número de jugadores permitidos.
         """
         from app.models.domain.player import Player
 
@@ -71,25 +70,24 @@ class GameAggregate:
         self._add_game_event("game_created", {"game_id": str(self.id), "max_players": self.max_players})
 
     def _add_game_event(self, event_type: str, payload: Dict) -> None:
-        """Adds an event to the game log.
+        """Agrega un evento al registro del juego.
 
         Args:
-            event_type: The type of event (e.g., "player_joined").
-            payload: A dictionary with event-specific data.
+            event_type: Tipo de evento (ej: "player_joined").
+            payload: Diccionario con datos específicos del evento.
         """
         from app.models.schemas import GameEventPydantic
         event = GameEventPydantic(type=event_type, payload=payload)
         self.log.append(event)
-        # In a real system, this event could also be emitted via WebSocket.
 
     def add_player(self, player: 'Player') -> bool:
-        """Adds a player to the game.
+        """Agrega un jugador a la partida.
 
         Args:
-            player: The Player instance to add.
+            player: Instancia de Player a agregar.
 
         Returns:
-            True if the player was added, False if the game is full, color is taken, or state is not waiting.
+            True si se agregó, False si el juego está lleno, color ocupado o estado incorrecto.
         """
         if len(self.players) >= self.max_players:
             return False
@@ -106,7 +104,7 @@ class GameAggregate:
         if len(self.players) >= MIN_PLAYERS:
             self.state = GameState.READY_TO_START
 
-        # DEBUG lines (commented out by default)
+        # DEBUG lines (comentadas por defecto)
         print(f"DEBUG en add_player: player.user_id='{player.user_id}'")
         print(f"DEBUG en add_player: player.color='{player.color}'")
         print(f"DEBUG en add_player: type(player.color) is {type(player.color)}")
@@ -117,13 +115,13 @@ class GameAggregate:
         return True
 
     def remove_player(self, color_to_remove: Color) -> bool:
-        """Removes a player from the game (e.g., if they disconnect before starting).
+        """Elimina un jugador de la partida (por ejemplo, si se desconecta antes de iniciar).
 
         Args:
-            color_to_remove: The color of the player to remove.
+            color_to_remove: Color del jugador a eliminar.
 
         Returns:
-            True if the player was removed, False otherwise.
+            True si se eliminó, False en caso contrario.
         """
         if color_to_remove in self.players:
             removed_player = self.players.pop(color_to_remove)
@@ -143,10 +141,10 @@ class GameAggregate:
         return False
 
     def start_game(self) -> bool:
-        """Starts the game, determines turn order, and sets the first player.
+        """Inicia la partida, determina el orden de turnos y asigna el primer jugador.
 
         Returns:
-            True if the game was started, False otherwise.
+            True si el juego inició, False en caso contrario.
         """
         if self.state != GameState.READY_TO_START or len(self.players) < MIN_PLAYERS:
             return False
@@ -164,7 +162,7 @@ class GameAggregate:
         return True
 
     def next_turn(self) -> None:
-        """Advances to the next player in the turn order."""
+        """Avanza al siguiente jugador en el orden de turnos."""
         if not self.current_turn_color or not self.turn_order:
             return
 
@@ -181,12 +179,12 @@ class GameAggregate:
         self.last_activity_at = datetime.now()
 
     def check_for_winner(self) -> Optional[Color]:
-        """Checks if any player has won the game.
+        """Verifica si algún jugador ha ganado la partida.
 
-        If a winner is found, updates the game state and returns the winner's color.
+        Si hay ganador, actualiza el estado y retorna el color del ganador.
 
         Returns:
-            The Color of the winning player, or None if there is no winner.
+            Color del jugador ganador, o None si no hay ganador.
         """
         for color, player in self.players.items():
             if player.check_win_condition():
@@ -198,21 +196,21 @@ class GameAggregate:
         return None
 
     def get_player(self, color: Color) -> Optional['Player']:
-        """Gets a player by their color.
+        """Obtiene un jugador por su color.
 
         Args:
-            color: The color of the player.
+            color: Color del jugador.
 
         Returns:
-            The Player instance if found, else None.
+            Instancia Player si existe, si no None.
         """
         return self.players.get(color)
 
     def get_current_player(self) -> Optional['Player']:
-        """Gets the current player whose turn it is.
+        """Obtiene el jugador cuyo turno es actualmente.
 
         Returns:
-            The Player instance if there is a current turn, else None.
+            Instancia Player si hay turno actual, si no None.
         """
         if self.current_turn_color:
             return self.players.get(self.current_turn_color)

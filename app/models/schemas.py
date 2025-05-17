@@ -14,32 +14,29 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from app.core.enums import Color, GameState, SquareType, MoveResultType
 
-# --- Modelos Base para la API ---
-
 class TunedModel(BaseModel):
-    """Base Pydantic model with common configuration.
+    """
+    Modelo base de Pydantic con configuración común.
 
-    Enables ORM mode (from_attributes) and serializes enums to their values.
+    Habilita el modo ORM (from_attributes) y serializa enums por su valor.
     """
     model_config = ConfigDict(
         from_attributes=True,
         use_enum_values=True
     )
 
-# --- Esquemas para Información de Jugadores y Fichas ---
-
 class PieceInfo(TunedModel):
-    """Public information about a game piece.
+    """
+    Información pública sobre una ficha del juego.
 
-    Attributes:
-        id: The global unique identifier of the piece.
-        piece_player_id: The player-specific ID of the piece (e.g., 0-3).
-        color: The color of the piece.
-        position: The current square ID where the piece is located.
-                  Can be an integer or a tuple for special squares.
-        is_in_jail: Whether the piece is currently in jail.
-        has_reached_cielo: Whether the piece has reached the final goal (cielo).
-        squares_advanced_in_path: Number of squares the piece has advanced on its main path.
+    Atributos:
+        id: Identificador global único de la ficha.
+        piece_player_id: ID relativo al jugador (ej: 0-3).
+        color: Color de la ficha.
+        position: ID de la casilla actual (entero o tupla para casillas especiales).
+        is_in_jail: Indica si la ficha está en la cárcel.
+        has_reached_cielo: Indica si la ficha ha llegado al cielo.
+        squares_advanced_in_path: Número de casillas avanzadas en el pasillo final.
     """
     id: UUID
     piece_player_id: int
@@ -50,14 +47,15 @@ class PieceInfo(TunedModel):
     squares_advanced_in_path: int
 
 class PlayerInfo(TunedModel):
-    """Public information about a player in the game.
+    """
+    Información pública sobre un jugador en la partida.
 
-    Attributes:
-        user_id: The unique identifier of the user.
-        color: The color assigned to the player.
-        pieces: A list of the player's pieces.
-        is_current_turn: Flag indicating if it is currently this player's turn.
-        consecutive_pairs_count: Count of consecutive pairs rolled by the player in their current turn.
+    Atributos:
+        user_id: Identificador único del usuario.
+        color: Color asignado al jugador.
+        pieces: Lista de fichas del jugador.
+        is_current_turn: Indica si es el turno actual de este jugador.
+        consecutive_pairs_count: Número de pares consecutivos lanzados por el jugador en su turno.
     """
     user_id: str
     color: Color
@@ -65,47 +63,46 @@ class PlayerInfo(TunedModel):
     is_current_turn: bool = False
     consecutive_pairs_count: int
 
-# --- Esquemas para Información del Tablero ---
-
 class SquareInfo(TunedModel):
-    """Public information about a square on the game board.
+    """
+    Información pública sobre una casilla del tablero.
 
-    Attributes:
-        id: The unique identifier of the square.
-        type: The type of the square (e.g., NORMAL, SEGURO, SALIDA).
-        occupants: A list of pieces currently occupying this square.
-        color_association: The color associated with this square, if any (e.g., for home rows, salida).
+    Atributos:
+        id: Identificador único de la casilla.
+        type: Tipo de la casilla (NORMAL, SEGURO, SALIDA, etc).
+        occupants: Lista de fichas que ocupan la casilla.
+        color_association: Color asociado a la casilla, si aplica.
     """
     id: Union[int, Tuple[str, Optional[Color], Optional[int]]]
     type: SquareType
     occupants: List[PieceInfo]
     color_association: Optional[Color]
 
-# --- Esquemas para Solicitudes (Requests) de la API ---
-
 class CreateGameRequest(TunedModel):
-    """Schema for a request to create a new game."""
+    """
+    Esquema para solicitud de creación de una nueva partida.
+    """
     max_players: int = Field(default=4, ge=2, le=8)
-    creator_user_id: str = Field(..., min_length=1, description="ID of the user creating the game")
-    creator_color: Color = Field(..., description="Color chosen by the creator (e.g., 'RED', 'GREEN', 0, 1)")
+    creator_user_id: str = Field(..., min_length=1, description="ID del usuario que crea la partida")
+    creator_color: Color = Field(..., description="Color elegido por el creador (ej: 'RED', 'GREEN', 0, 1)")
 
     @field_validator('creator_color', mode='before')
     @classmethod
     def validate_creator_color(cls, v: Any) -> Color:
-        """Validates and converts the creator_color field.
+        """
+        Valida y convierte el campo creator_color.
 
-        Accepts Color enum members, color name strings (case-insensitive),
-        or integers (0: RED, 1: GREEN, 2: BLUE, 3: YELLOW).
+        Acepta miembros del enum Color, cadenas (case-insensitive) o enteros (0-3).
 
         Args:
-            v: The input value for creator_color.
+            v: Valor de entrada para creator_color.
 
         Returns:
-            A valid Color enum member.
+            Miembro válido de Color.
 
         Raises:
-            ValueError: If the input color string or integer is invalid.
-            TypeError: If the input type is not str, int, or Color.
+            ValueError: Si el color es inválido.
+            TypeError: Si el tipo no es str, int o Color.
         """
         if isinstance(v, Color):
             return v
@@ -114,40 +111,42 @@ class CreateGameRequest(TunedModel):
                 return Color(v.upper())
             except ValueError:
                 valid_colors_str = [e.value for e in Color]
-                raise ValueError(f"Invalid color string: '{v}'. Must be one of {valid_colors_str} or a valid integer (0-3).")
+                raise ValueError(f"Color inválido: '{v}'. Debe ser uno de {valid_colors_str} o un entero válido (0-3).")
         if isinstance(v, int):
             try:
                 if v == 0: return Color.RED
                 if v == 1: return Color.GREEN
                 if v == 2: return Color.BLUE
                 if v == 3: return Color.YELLOW
-                raise ValueError(f"Invalid integer for color: {v}. Must be 0-3.")
+                raise ValueError(f"Entero inválido para color: {v}. Debe ser 0-3.")
             except ValueError as e:
                  raise ValueError(str(e)) from e
-        raise TypeError(f"Invalid type for Color: {type(v)}. Expected string, int, or Color enum member.")
+        raise TypeError(f"Tipo inválido para Color: {type(v)}. Se espera string, int o miembro del enum Color.")
 
 class JoinGameRequest(TunedModel):
-    """Schema for a request to join an existing game."""
-    user_id: str = Field(..., min_length=1, description="ID of the user joining the game")
-    color: Color = Field(..., description="Color requested by the user (e.g., 'RED', 'GREEN', 0, 1)")
+    """
+    Esquema para solicitud de unión a una partida existente.
+    """
+    user_id: str = Field(..., min_length=1, description="ID del usuario que se une a la partida")
+    color: Color = Field(..., description="Color solicitado por el usuario (ej: 'RED', 'GREEN', 0, 1)")
 
     @field_validator('color', mode='before')
     @classmethod
     def validate_join_color(cls, v: Any) -> Color:
-        """Validates and converts the color field for a join request.
+        """
+        Valida y convierte el campo color para la solicitud de unión.
 
-        Accepts Color enum members, color name strings (case-insensitive),
-        or integers (0: RED, 1: GREEN, 2: BLUE, 3: YELLOW).
+        Acepta miembros del enum Color, cadenas (case-insensitive) o enteros (0-3).
 
         Args:
-            v: The input value for the color.
+            v: Valor de entrada para color.
 
         Returns:
-            A valid Color enum member.
+            Miembro válido de Color.
 
         Raises:
-            ValueError: If the input color string or integer is invalid.
-            TypeError: If the input type is not str, int, or Color.
+            ValueError: Si el color es inválido.
+            TypeError: Si el tipo no es str, int o Color.
         """
         if isinstance(v, Color):
             return v
@@ -156,58 +155,51 @@ class JoinGameRequest(TunedModel):
                 return Color(v.upper())
             except ValueError:
                 valid_colors_str = [e.value for e in Color]
-                raise ValueError(f"Invalid color string: '{v}'. Must be one of {valid_colors_str} or a valid integer (0-3).")
+                raise ValueError(f"Color inválido: '{v}'. Debe ser uno de {valid_colors_str} o un entero válido (0-3).")
         if isinstance(v, int):
             try:
                 if v == 0: return Color.RED
                 if v == 1: return Color.GREEN
                 if v == 2: return Color.BLUE
                 if v == 3: return Color.YELLOW
-                raise ValueError(f"Invalid integer for color: {v}. Must be 0-3.")
+                raise ValueError(f"Entero inválido para color: {v}. Debe ser 0-3.")
             except ValueError as e:
                 raise ValueError(str(e)) from e
-        raise TypeError(f"Invalid type for Color: {type(v)}. Expected string, int, or Color enum member.")
+        raise TypeError(f"Tipo inválido para Color: {type(v)}. Se espera string, int o miembro del enum Color.")
 
 class MovePieceRequest(TunedModel):
-    """Schema for a request to move a piece.
+    """
+    Esquema para solicitud de movimiento de una ficha.
 
-    The `user_id` is typically obtained from authentication (e.g., token/session).
-    The `game_id` is part of the URL path.
-
-    Attributes:
-        piece_uuid: UUID of the piece to be moved.
-        target_square_id: The destination square ID for the move.
-        steps_used: The dice roll value (d1, d2, or d1+d2) used for this specific move.
+    Atributos:
+        piece_uuid: UUID de la ficha a mover.
+        target_square_id: ID de la casilla destino.
+        steps_used: Valor del dado usado para este movimiento.
     """
     piece_uuid: UUID
     target_square_id: Union[int, Tuple[str, Optional[Color], Optional[int]]]
     steps_used: int
 
 class BurnPieceRequest(TunedModel):
-    """Schema for a request to burn a piece after rolling three pairs.
+    """
+    Esquema para solicitud de quemar una ficha tras sacar tres pares.
 
-    If `piece_uuid` is not provided, the server may automatically choose a piece
-    to burn based on game rules.
-
-    Attributes:
-        piece_uuid: Optional UUID of the piece the player chooses to burn.
+    Atributos:
+        piece_uuid: UUID opcional de la ficha elegida para quemar.
     """
     piece_uuid: Optional[UUID] = None
 
-# --- Esquemas para Respuestas (Responses) de la API ---
-
 class GameInfo(TunedModel):
-    """Basic information about a game.
+    """
+    Información básica sobre una partida.
 
-    Used for listings (e.g., in a lobby) or after creating/joining a game.
-
-    Attributes:
-        id: Unique identifier of the game.
-        state: Current state of the game (e.g., WAITING_PLAYERS, IN_PROGRESS).
-        max_players: Maximum number of players allowed in the game.
-        current_player_count: Current number of players in the game.
-        players: List of players in the game.
-        created_at: Timestamp of when the game was created.
+    Atributos:
+        id: Identificador único de la partida.
+        state: Estado actual de la partida.
+        max_players: Máximo de jugadores permitidos.
+        current_player_count: Número actual de jugadores.
+        players: Lista de jugadores en la partida.
+        created_at: Fecha de creación.
     """
     id: UUID
     state: GameState
@@ -217,15 +209,15 @@ class GameInfo(TunedModel):
     created_at: datetime
 
 class DiceRollResponse(TunedModel):
-    """Schema for the response after a dice roll.
+    """
+    Esquema para la respuesta tras lanzar los dados.
 
-    Attributes:
-        dice1: Value of the first die.
-        dice2: Value of the second die.
-        is_pairs: Boolean indicating if the roll was a pair.
-        roll_validation_result: Result of validating the roll (e.g., THREE_PAIRS_BURN, OK).
-        possible_moves: A dictionary mapping piece UUIDs to a list of possible moves.
-                        Each move is a tuple: (target_square_id, move_result_type, steps_used).
+    Atributos:
+        dice1: Valor del primer dado.
+        dice2: Valor del segundo dado.
+        is_pairs: Indica si fue un par.
+        roll_validation_result: Resultado de la validación del tiro.
+        possible_moves: Diccionario de movimientos posibles por ficha.
     """
     dice1: int
     dice2: int
@@ -234,32 +226,32 @@ class DiceRollResponse(TunedModel):
     possible_moves: Dict[str, List[Tuple[Union[int, Tuple[str, Optional[Color], Optional[int]]], MoveResultType, int]]]
 
 class MoveOutcome(TunedModel):
-    """Schema for the outcome of a piece movement or burning action.
+    """
+    Esquema para el resultado de un movimiento o quemada de ficha.
 
-    Attributes:
-        success: Boolean indicating if the action was successful.
-        message: A descriptive message about the outcome.
-        move_result_type: The specific result type of the move, if applicable.
+    Atributos:
+        success: Indica si la acción fue exitosa.
+        message: Mensaje descriptivo del resultado.
+        move_result_type: Tipo específico de resultado, si aplica.
     """
     success: bool
     message: str
     move_result_type: Optional[MoveResultType] = None
 
 class GameSnapshot(TunedModel):
-    """Comprehensive representation of the current game state.
+    """
+    Representación completa del estado actual de la partida.
 
-    Intended for clients to render the game.
-
-    Attributes:
-        game_id: Unique identifier of the game.
-        state: Current state of the game.
-        board: List of all squares on the board with their occupants.
-        players: Detailed information for all players in the game.
-        turn_order: Current order of player turns by color.
-        current_turn_color: Color of the player whose turn it currently is.
-        current_player_doubles_count: Game's count of consecutive doubles for the current player's turn.
-        last_dice_roll: The dice values from the last roll in the current turn, if any.
-        winner: The color of the winning player, if the game has finished.
+    Atributos:
+        game_id: Identificador único de la partida.
+        state: Estado actual.
+        board: Lista de casillas con sus ocupantes.
+        players: Información detallada de los jugadores.
+        turn_order: Orden actual de turnos por color.
+        current_turn_color: Color del jugador en turno.
+        current_player_doubles_count: Número de pares consecutivos del jugador actual.
+        last_dice_roll: Último tiro de dados, si existe.
+        winner: Color del jugador ganador, si la partida terminó.
     """
     game_id: UUID
     state: GameState
@@ -271,17 +263,16 @@ class GameSnapshot(TunedModel):
     last_dice_roll: Optional[Tuple[int, int]] = None
     winner: Optional[Color] = None
 
-# --- Esquema para Eventos del Juego (usado en GameAggregate y WebSockets) ---
-
 class GameEventPydantic(TunedModel):
-    """Pydantic model for game events.
+    """
+    Modelo Pydantic para eventos del juego.
 
-    Used for logging within GameAggregate and for sending updates via WebSockets.
+    Usado para logs internos y para enviar actualizaciones por WebSockets.
 
-    Attributes:
-        ts: Timestamp of when the event occurred.
-        type: String identifying the type of event (e.g., "dice_rolled", "piece_moved").
-        payload: Dictionary containing event-specific data.
+    Atributos:
+        ts: Marca de tiempo del evento.
+        type: Tipo de evento (ej: "dice_rolled", "piece_moved").
+        payload: Diccionario con datos específicos del evento.
     """
     ts: datetime = Field(default_factory=datetime.now)
     type: str

@@ -13,49 +13,54 @@ if TYPE_CHECKING:
 
 
 class GameRepository(ABC):
-    """Abstract interface for a Parqués game repository.
+    """
+    Interfaz abstracta para un repositorio de partidas de Parqués.
 
-    Any repository implementation (in-memory, database, etc.) must implement these methods.
+    Cualquier implementación (memoria, base de datos, etc.) debe implementar estos métodos.
     """
 
     @abstractmethod
     async def get_by_id(self, game_id: uuid.UUID) -> Optional['GameAggregate']:
-        """Retrieve a game by its ID.
+        """
+        Recupera una partida por su ID.
 
         Args:
-            game_id: The unique identifier of the game.
+            game_id: Identificador único de la partida.
 
         Returns:
-            The GameAggregate instance if found, else None.
+            Instancia de GameAggregate si se encuentra, si no None.
         """
         pass
 
     @abstractmethod
     async def save(self, game: 'GameAggregate') -> None:
-        """Save (create or update) a game in the repository.
+        """
+        Guarda (crea o actualiza) una partida en el repositorio.
 
         Args:
-            game: The GameAggregate instance to save.
+            game: Instancia de GameAggregate a guardar.
         """
         pass
 
     @abstractmethod
     async def delete(self, game_id: uuid.UUID) -> bool:
-        """Delete a game from the repository.
+        """
+        Elimina una partida del repositorio.
 
         Args:
-            game_id: The unique identifier of the game to delete.
+            game_id: Identificador único de la partida a eliminar.
 
         Returns:
-            True if the game was deleted, False if not found.
+            True si la partida fue eliminada, False si no se encontró.
         """
         pass
 
     @abstractmethod
     async def get_all_active(self) -> List['GameAggregate']:
-        """Retrieve all active or waiting games.
+        """
+        Recupera todas las partidas activas o en espera.
 
         Returns:
-            A list of GameAggregate instances representing active or waiting games.
+            Lista de instancias GameAggregate representando partidas activas o en espera.
         """
         pass

@@ -1,7 +1,7 @@
-"""API Endpoints for Parqués game operations.
+"""Endpoints de la API para operaciones del juego de Parqués.
 
-This module defines FastAPI routes for creating, joining, starting,
-and managing the state of Parqués games.
+Este módulo define las rutas de FastAPI para crear, unirse, iniciar
+y gestionar el estado de las partidas de Parqués.
 """
 from fastapi import APIRouter, Depends, HTTPException, Path, Body, status, Header
 from typing import Annotated, Optional
@@ -16,17 +16,15 @@ from app.services.game_service import GameServiceError
 router = APIRouter()
 
 async def get_current_user_id(x_user_id: Annotated[Optional[str], Header()] = None) -> Optional[str]:
-    """Extracts the user ID from the X-User-ID header.
+    """
+    Extrae el ID de usuario del encabezado X-User-ID.
 
     Args:
-        x_user_id: The value of the X-User-ID header, if present.
+        x_user_id: Valor del encabezado X-User-ID, si está presente.
 
     Returns:
-        The user ID as a string if the header is present, otherwise None.
+        El ID de usuario como cadena si el encabezado está presente, de lo contrario None.
     """
-    # For endpoints that require a user ID, validation is performed within the endpoint.
-    # Returning None here allows flexibility for endpoints that might not strictly require it
-    # or have alternative ways of identifying the user.
     if not x_user_id:
         return None
     return x_user_id
@@ -43,26 +41,25 @@ async def create_game_endpoint(
     create_request: schemas.CreateGameRequest,
     service: GameServiceDep,
 ) -> schemas.GameInfo:
-    """Creates a new Parqués game.
+    """
+    Crea una nueva partida de Parqués.
 
-    The user ID of the creator is taken from the request body.
+    El ID del creador se toma del cuerpo de la solicitud.
 
     Args:
-        create_request: Request body containing creator_user_id, creator_color, and max_players.
-        service: Dependency injection for GameService.
+        create_request: Contiene creator_user_id, creator_color y max_players.
+        service: Inyección de dependencia para GameService.
 
     Raises:
-        HTTPException: 422 if creator_color is invalid.
+        HTTPException: 422 si creator_color es inválido.
 
     Returns:
-        Information about the newly created game.
+        Información sobre la partida creada.
     """
     final_creator_color: Color
     if isinstance(create_request.creator_color, Color):
         final_creator_color = create_request.creator_color
     else:
-        # This path is a safeguard. Ideally, Pydantic's field_validator
-        # in CreateGameRequest handles the conversion.
         try:
             final_creator_color = Color(create_request.creator_color)
         except ValueError:
@@ -92,9 +89,7 @@ async def create_game_endpoint(
             created_at=game.created_at
         )
     except GameServiceError as e:
-        # This specific catch can be useful for endpoint-specific logging
-        # or error transformation, but the global handler will also catch it.
-        raise # Re-raise for the global exception handler.
+        raise
 
 @router.post(
     "/games/{game_id}/join",
@@ -106,15 +101,16 @@ async def join_game_endpoint(
     join_request: schemas.JoinGameRequest,
     service: GameServiceDep
 ) -> schemas.GameInfo:
-    """Allows a user to join an existing game.
+    """
+    Permite a un usuario unirse a una partida existente.
 
     Args:
-        game_id: The UUID of the game to join.
-        join_request: Request body containing the user_id and requested_color.
-        service: Dependency injection for GameService.
+        game_id: UUID de la partida.
+        join_request: Contiene user_id y color solicitado.
+        service: Inyección de dependencia para GameService.
 
     Returns:
-        Updated information about the game after the player has joined.
+        Información actualizada de la partida.
     """
     game = await service.join_game(
         game_id=game_id,
@@ -146,20 +142,21 @@ async def start_game_endpoint(
     user_id: UserIdDep,
     service: GameServiceDep
 ) -> schemas.GameInfo:
-    """Starts a game that is in a 'READY_TO_START' state.
+    """
+    Inicia una partida en estado 'READY_TO_START'.
 
-    The user attempting to start the game must be the creator.
+    El usuario debe ser el creador.
 
     Args:
-        game_id: The UUID of the game to start.
-        user_id: The ID of the user attempting to start the game (from X-User-ID header).
-        service: Dependency injection for GameService.
+        game_id: UUID de la partida.
+        user_id: ID del usuario (de X-User-ID).
+        service: Inyección de dependencia para GameService.
 
     Raises:
-        HTTPException: 400 if X-User-ID header is missing.
+        HTTPException: 400 si falta el encabezado X-User-ID.
 
     Returns:
-        Information about the game after it has started.
+        Información de la partida tras iniciar.
     """
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="X-User-ID header es requerido para iniciar la partida.")
@@ -181,7 +178,6 @@ async def start_game_endpoint(
         created_at=game.created_at
     )
 
-
 @router.get(
     "/games/{game_id}/state",
     response_model=schemas.GameSnapshot,
@@ -191,24 +187,21 @@ async def get_game_state_endpoint(
     game_id: Annotated[uuid.UUID, Path(description="El ID de la partida")],
     service: GameServiceDep
 ) -> schemas.GameSnapshot:
-    """Retrieves the complete current state of a game.
+    """
+    Obtiene el estado completo actual de una partida.
 
     Args:
-        game_id: The UUID of the game.
-        service: Dependency injection for GameService (used to access repository).
+        game_id: UUID de la partida.
+        service: Inyección de dependencia para GameService.
 
     Raises:
-        HTTPException: 404 if the game is not found.
+        HTTPException: 404 si la partida no existe.
 
     Returns:
-        A snapshot of the game's current state.
+        Snapshot del estado actual del juego.
     """
-    # Direct repository access for reads can be an option,
-    # or a dedicated get_game method in GameService.
     game = await service._repository.get_by_id(game_id)
     if not game:
-        # GameNotFoundError from the service would be caught by the global handler.
-        # If accessing repo directly, raise HTTPException.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Partida no encontrada")
 
     board_info = [schemas.SquareInfo.model_validate(sq) for sq_id, sq in game.board.squares.items()]
@@ -240,27 +233,25 @@ async def roll_dice_endpoint(
     user_id: UserIdDep,
     service: GameServiceDep
 ) -> schemas.DiceRollResponse:
-    """Allows the current player to roll the dice.
+    """
+    Permite al jugador actual lanzar los dados.
 
     Args:
-        game_id: The UUID of the game.
-        user_id: The ID of the user rolling the dice (from X-User-ID header).
-                 Must match the current player's turn.
-        service: Dependency injection for GameService.
+        game_id: UUID de la partida.
+        user_id: ID del usuario (de X-User-ID).
+        service: Inyección de dependencia para GameService.
 
     Raises:
-        HTTPException: 400 if X-User-ID header is missing.
+        HTTPException: 400 si falta el encabezado X-User-ID.
 
     Returns:
-        The result of the dice roll, including validation and possible moves.
+        Resultado del lanzamiento de dados.
     """
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="X-User-ID header es requerido.")
 
     _game, dice_rolled, roll_val_result, possible_mvs = await service.roll_dice(game_id, user_id)
 
-    # The _game object returned by service.roll_dice is already updated and saved.
-    # We only need to return the specific dice roll response.
     return schemas.DiceRollResponse(
         dice1=dice_rolled[0],
         dice2=dice_rolled[1],
@@ -280,20 +271,20 @@ async def move_piece_endpoint(
     user_id: UserIdDep,
     service: GameServiceDep
 ) -> schemas.GameSnapshot:
-    """Allows the current player to move a piece.
+    """
+    Permite al jugador actual mover una ficha.
 
     Args:
-        game_id: The UUID of the game.
-        move_request: Request body containing piece_uuid, target_square_id, and steps_used.
-        user_id: The ID of the user making the move (from X-User-ID header).
-                 Must match the current player's turn.
-        service: Dependency injection for GameService.
+        game_id: UUID de la partida.
+        move_request: Contiene piece_uuid, target_square_id y steps_used.
+        user_id: ID del usuario (de X-User-ID).
+        service: Inyección de dependencia para GameService.
 
     Raises:
-        HTTPException: 400 if X-User-ID header is missing.
+        HTTPException: 400 si falta el encabezado X-User-ID.
 
     Returns:
-        The complete game state after the move.
+        Estado completo del juego tras el movimiento.
     """
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="X-User-ID header es requerido.")
@@ -304,10 +295,8 @@ async def move_piece_endpoint(
         piece_uuid_str=str(move_request.piece_uuid),
         target_square_id_from_player=move_request.target_square_id,
         steps_taken_for_move=move_request.steps_used
-        # original_dice_roll is taken from game.last_dice_roll within the service
     )
 
-    # Construct the GameSnapshot response
     board_info = [schemas.SquareInfo.model_validate(sq) for sq_id, sq in game.board.squares.items()]
     player_infos = []
     for p_color, p_obj in game.players.items():
@@ -327,7 +316,6 @@ async def move_piece_endpoint(
         winner=game.winner
     )
 
-
 @router.post(
     "/games/{game_id}/burn-piece",
     response_model=schemas.GameSnapshot,
@@ -339,23 +327,20 @@ async def burn_piece_three_pairs_endpoint(
     user_id: UserIdDep,
     service: GameServiceDep
 ) -> schemas.GameSnapshot:
-    """Handles the penalty for rolling three consecutive pairs.
-
-    The current player may choose a piece to burn; otherwise, the service
-    determines the piece to burn based on game rules.
+    """
+    Maneja la penalización por sacar tres pares consecutivos.
 
     Args:
-        game_id: The UUID of the game.
-        burn_request: Request body optionally containing the piece_uuid to burn.
-        user_id: The ID of the user who rolled three pairs (from X-User-ID header).
-                 Must match the current player's turn.
-        service: Dependency injection for GameService.
+        game_id: UUID de la partida.
+        burn_request: Puede contener piece_uuid a quemar.
+        user_id: ID del usuario (de X-User-ID).
+        service: Inyección de dependencia para GameService.
 
     Raises:
-        HTTPException: 400 if X-User-ID header is missing.
+        HTTPException: 400 si falta el encabezado X-User-ID.
 
     Returns:
-        The complete game state after the penalty is applied.
+        Estado completo del juego tras la penalización.
     """
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="X-User-ID header es requerido.")
@@ -365,7 +350,6 @@ async def burn_piece_three_pairs_endpoint(
         user_id=user_id,
         piece_to_burn_uuid_str=str(burn_request.piece_uuid) if burn_request.piece_uuid else None
     )
-    # Construct and return GameSnapshot
     board_info = [schemas.SquareInfo.model_validate(sq) for sq_id, sq in game.board.squares.items()]
     player_infos = []
     for p_color, p_obj in game.players.items():
@@ -395,28 +379,25 @@ async def pass_turn_endpoint(
     user_id: UserIdDep,
     service: GameServiceDep
 ) -> schemas.GameSnapshot:
-    """Allows the current player to pass their turn.
-
-    This is typically used when the player has no valid moves after rolling the dice.
+    """
+    Permite al jugador actual pasar su turno.
 
     Args:
-        game_id: The UUID of the game.
-        user_id: The ID of the user passing the turn (from X-User-ID header).
-                 Must match the current player's turn.
-        service: Dependency injection for GameService.
+        game_id: UUID de la partida.
+        user_id: ID del usuario (de X-User-ID).
+        service: Inyección de dependencia para GameService.
 
     Raises:
-        HTTPException: 400 if X-User-ID header is missing.
+        HTTPException: 400 si falta el encabezado X-User-ID.
 
     Returns:
-        The complete game state after the turn has been passed.
+        Estado completo del juego tras pasar el turno.
     """
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="X-User-ID header es requerido.")
 
     game = await service.pass_player_turn(game_id, user_id)
 
-    # Construct and return GameSnapshot
     board_info = [schemas.SquareInfo.model_validate(sq) for sq_id, sq in game.board.squares.items()]
     player_infos = []
     for p_color, p_obj in game.players.items():

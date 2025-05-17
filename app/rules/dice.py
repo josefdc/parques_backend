@@ -1,20 +1,23 @@
-"""Dice rolling utilities for Parqués.
+"""Utilidades para lanzar dados en Parqués.
 
-This module provides the Dice class to simulate rolling two six-sided dice,
-including utility methods for checking pairs.
+Este módulo proporciona la clase Dice para simular el lanzamiento de dos dados de seis caras,
+incluyendo métodos útiles para verificar pares.
 """
 import random
 from typing import Tuple
 
 class Dice:
-    """Class to simulate rolling two Parqués dice."""
+    """
+    Clase para simular el lanzamiento de dos dados de Parqués.
+    """
 
     @staticmethod
     def roll() -> Tuple[int, int]:
-        """Rolls two six-sided dice.
+        """
+        Lanza dos dados de seis caras.
 
         Returns:
-            Tuple[int, int]: A tuple with the results of the two dice.
+            Tupla con los resultados de los dos dados.
         """
         d1 = random.randint(1, 6)
         d2 = random.randint(1, 6)
@@ -22,13 +25,14 @@ class Dice:
 
     @staticmethod
     def are_pairs(d1: int, d2: int) -> bool:
-        """Checks if the dice results are a pair.
+        """
+        Verifica si los resultados de los dados son un par.
 
         Args:
-            d1: Result of the first die.
-            d2: Result of the second die.
+            d1: Resultado del primer dado.
+            d2: Resultado del segundo dado.
 
         Returns:
-            True if both dice show the same value, False otherwise.
+            True si ambos dados muestran el mismo valor, False en caso contrario.
         """
         return d1 == d2

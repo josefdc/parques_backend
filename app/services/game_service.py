@@ -13,60 +13,64 @@ from app.repositories.base_repository import GameRepository
 from app.rules.move_validator import MoveValidator
 from app.rules.dice import Dice
 from app.models.domain.player import Player, PIECES_PER_PLAYER
-
-# --- Importa las constantes y GameAggregate a nivel de módulo ---
 from app.models.domain.game import GameAggregate, MIN_PLAYERS, MAX_PLAYERS
 
 if TYPE_CHECKING:
     from app.models.domain.piece import Piece
     from app.models.domain.square import SquareId
     from app.models.schemas import GameEventPydantic
-    # Ensure GameAggregate is imported for type hinting if not already
-    # from app.models.domain.game import GameAggregate
 
 class GameServiceError(Exception):
-    """Base exception for game service errors.
+    """
+    Excepción base para errores del servicio de juego.
 
-    Attributes:
-        message: Description of the error.
-        result_type: Optional MoveResultType for more granular error reporting.
+    Atributos:
+        message: Descripción del error.
+        result_type: MoveResultType opcional para mayor detalle.
     """
     def __init__(self, message: str, result_type: Optional[MoveResultType] = None):
         super().__init__(message)
         self.result_type = result_type
 
 class GameNotFoundError(GameServiceError):
-    """Exception raised when a game is not found."""
+    """
+    Excepción lanzada cuando no se encuentra una partida.
+    """
     def __init__(self, game_id: uuid.UUID):
         super().__init__(f"Partida con ID {game_id} no encontrada.")
 
 class PlayerNotInGameError(GameServiceError):
-    """Exception raised when a player is not found in a game."""
+    """
+    Excepción lanzada cuando un jugador no está en la partida.
+    """
     def __init__(self, user_id: str, game_id: uuid.UUID):
         super().__init__(f"Jugador {user_id} no encontrado en la partida {game_id}.")
 
 class NotPlayerTurnError(GameServiceError):
-    """Exception raised when a player attempts an action out of turn."""
+    """
+    Excepción lanzada cuando un jugador intenta una acción fuera de su turno.
+    """
     def __init__(self, user_id: str, game_id: uuid.UUID):
         super().__init__(f"No es el turno del jugador {user_id} en la partida {game_id}.", MoveResultType.NOT_YOUR_TURN)
 
 class GameService:
-    """Service for managing Parqués game logic.
+    """
+    Servicio para gestionar la lógica del juego de Parqués.
 
-    Handles player actions, turn management, dice rolling, move validation,
-    and game state transitions.
+    Maneja acciones de jugadores, turnos, lanzamientos de dados, validación de movimientos y transiciones de estado.
     """
     _repository: GameRepository
     _validator: MoveValidator
     _dice: Dice
 
     def __init__(self, repository: GameRepository, validator: MoveValidator, dice_roller: Dice):
-        """Initializes the GameService.
+        """
+        Inicializa el GameService.
 
         Args:
-            repository: The game repository instance.
-            validator: The move validator instance.
-            dice_roller: The dice roller instance.
+            repository: Instancia del repositorio de partidas.
+            validator: Instancia del validador de movimientos.
+            dice_roller: Instancia del lanzador de dados.
         """
         self._repository = repository
         self._validator = validator
@@ -74,18 +78,19 @@ class GameService:
         print("GameService initialized.")
 
     async def create_new_game(self, creator_user_id: str, creator_color: Color, max_players: int = MAX_PLAYERS) -> GameAggregate:
-        """Creates a new Parqués game and adds the creator as the first player.
+        """
+        Crea una nueva partida de Parqués y añade al creador como primer jugador.
 
         Args:
-            creator_user_id: The user ID of the game creator.
-            creator_color: The color chosen by the creator.
-            max_players: Maximum number of players for the game.
+            creator_user_id: ID del usuario creador.
+            creator_color: Color elegido por el creador.
+            max_players: Máximo de jugadores.
 
         Raises:
-            GameServiceError: If max_players is out of bounds or player cannot be added.
+            GameServiceError: Si max_players es inválido o no se puede añadir el jugador.
 
         Returns:
-            The created GameAggregate instance.
+            Instancia de GameAggregate creada.
         """
         game_id = uuid.uuid4()
         
@@ -107,19 +112,20 @@ class GameService:
         return game
 
     async def join_game(self, game_id: uuid.UUID, user_id: str, requested_color: Color) -> GameAggregate:
-        """Allows a user to join an existing game.
+        """
+        Permite a un usuario unirse a una partida existente.
 
         Args:
-            game_id: The UUID of the game to join.
-            user_id: The user ID of the joining player.
-            requested_color: The color requested by the player.
+            game_id: UUID de la partida.
+            user_id: ID del usuario.
+            requested_color: Color solicitado.
 
         Raises:
-            GameNotFoundError: If the game does not exist.
-            GameServiceError: If the join conditions are not met.
+            GameNotFoundError: Si la partida no existe.
+            GameServiceError: Si no se cumplen las condiciones de unión.
 
         Returns:
-            The updated GameAggregate instance.
+            Instancia actualizada de GameAggregate.
         """
         game = await self._repository.get_by_id(game_id)
         if not game:
@@ -163,18 +169,19 @@ class GameService:
         return game
 
     async def start_game(self, game_id: uuid.UUID, starting_user_id: str) -> GameAggregate:
-        """Starts a game if it is ready.
+        """
+        Inicia una partida si está lista.
 
         Args:
-            game_id: The UUID of the game to start.
-            starting_user_id: The user ID of the player starting the game.
+            game_id: UUID de la partida.
+            starting_user_id: ID del jugador que inicia.
 
         Raises:
-            GameNotFoundError: If the game does not exist.
-            GameServiceError: If the game cannot be started.
+            GameNotFoundError: Si la partida no existe.
+            GameServiceError: Si no se puede iniciar.
 
         Returns:
-            The updated GameAggregate instance.
+            Instancia actualizada de GameAggregate.
         """
         game = await self._repository.get_by_id(game_id)
         if not game:
@@ -206,22 +213,23 @@ class GameService:
         game_id: uuid.UUID,
         user_id: str
     ) -> Tuple[GameAggregate, Tuple[int, int], MoveResultType, Dict[str, List[Tuple['SquareId', MoveResultType, int]]]]:
-        """Handles a player's dice roll, validates the result, and computes possible moves.
+        """
+        Maneja el lanzamiento de dados de un jugador, valida el resultado y calcula movimientos posibles.
 
         Args:
-            game_id: The UUID of the game.
-            user_id: The user ID of the player rolling the dice.
+            game_id: UUID de la partida.
+            user_id: ID del jugador.
 
         Raises:
-            GameNotFoundError: If the game does not exist.
-            GameServiceError: If the roll is not allowed.
+            GameNotFoundError: Si la partida no existe.
+            GameServiceError: Si el lanzamiento no está permitido.
 
         Returns:
-            A tuple containing:
-                - The updated GameAggregate.
-                - The dice roll (d1, d2).
-                - The MoveResultType for the roll.
-                - The possible moves dictionary.
+            Tupla con:
+                - GameAggregate actualizado.
+                - Lanzamiento de dados (d1, d2).
+                - MoveResultType del tiro.
+                - Diccionario de movimientos posibles.
         """
         game = await self._repository.get_by_id(game_id)
         if not game:
@@ -269,22 +277,23 @@ class GameService:
         target_square_id_from_player: 'SquareId',
         steps_taken_for_move: int
     ) -> GameAggregate:
-        """Moves a selected piece to a chosen destination, applying game rules.
+        """
+        Mueve una ficha seleccionada al destino elegido, aplicando reglas del juego.
 
         Args:
-            game_id: The UUID of the game.
-            user_id: The user ID of the player making the move.
-            piece_uuid_str: The UUID string of the piece to move.
-            target_square_id_from_player: The destination square ID.
-            steps_taken_for_move: The number of steps used for the move.
+            game_id: UUID de la partida.
+            user_id: ID del jugador.
+            piece_uuid_str: UUID de la ficha a mover.
+            target_square_id_from_player: ID de la casilla destino.
+            steps_taken_for_move: Número de pasos usados.
 
         Raises:
-            GameNotFoundError: If the game does not exist.
-            NotPlayerTurnError: If it is not the player's turn.
-            GameServiceError: If the move is invalid.
+            GameNotFoundError: Si la partida no existe.
+            NotPlayerTurnError: Si no es el turno del jugador.
+            GameServiceError: Si el movimiento es inválido.
 
         Returns:
-            The updated GameAggregate instance.
+            Instancia actualizada de GameAggregate.
         """
         game = await self._repository.get_by_id(game_id)
         if not game:
@@ -438,20 +447,21 @@ class GameService:
         user_id: str,
         piece_to_burn_uuid_str: Optional[str] = None
     ) -> GameAggregate:
-        """Handles the penalty for rolling three consecutive pairs.
+        """
+        Maneja la penalización por sacar tres pares consecutivos.
 
         Args:
-            game_id: The UUID of the game.
-            user_id: The user ID of the penalized player.
-            piece_to_burn_uuid_str: Optional UUID string of the piece to burn.
+            game_id: UUID de la partida.
+            user_id: ID del jugador penalizado.
+            piece_to_burn_uuid_str: UUID opcional de la ficha a quemar.
 
         Raises:
-            GameNotFoundError: If the game does not exist.
-            PlayerNotInGameError: If the player is not in the game.
-            GameServiceError: If the penalty cannot be applied.
+            GameNotFoundError: Si la partida no existe.
+            PlayerNotInGameError: Si el jugador no está en la partida.
+            GameServiceError: Si no se puede aplicar la penalización.
 
         Returns:
-            The updated GameAggregate instance.
+            Instancia actualizada de GameAggregate.
         """
         game = await self._repository.get_by_id(game_id)
         if not game:
@@ -505,19 +515,20 @@ class GameService:
         return game
 
     async def pass_player_turn(self, game_id: uuid.UUID, user_id: str) -> GameAggregate:
-        """Handles the scenario where a player passes their turn due to no valid moves.
+        """
+        Maneja el escenario donde un jugador pasa su turno por no tener movimientos válidos.
 
         Args:
-            game_id: The UUID of the game.
-            user_id: The user ID of the player passing the turn.
+            game_id: UUID de la partida.
+            user_id: ID del jugador.
 
         Raises:
-            GameNotFoundError: If the game does not exist.
-            NotPlayerTurnError: If it is not the player's turn.
-            GameServiceError: If the game is not in progress.
+            GameNotFoundError: Si la partida no existe.
+            NotPlayerTurnError: Si no es el turno del jugador.
+            GameServiceError: Si la partida no está en curso.
 
         Returns:
-            The updated GameAggregate instance.
+            Instancia actualizada de GameAggregate.
         """
         game = await self._repository.get_by_id(game_id)
         if not game:
@@ -553,17 +564,18 @@ class GameService:
         return game
 
     def _get_player_from_user_id(self, game: GameAggregate, user_id: str) -> Tuple[Color, Player]:
-        """Helper to get the player's color and object from their user_id.
+        """
+        Ayuda a obtener el color y objeto Player a partir del user_id.
 
         Args:
-            game: The GameAggregate instance.
-            user_id: The user ID to search for.
+            game: Instancia de GameAggregate.
+            user_id: ID del usuario.
 
         Raises:
-            PlayerNotInGameError: If the user is not found in the game.
+            PlayerNotInGameError: Si el usuario no está en la partida.
 
         Returns:
-            A tuple of (Color, Player).
+            Tupla (Color, Player).
         """
         for color_enum, p_obj in game.players.items():
             if p_obj.user_id == user_id:

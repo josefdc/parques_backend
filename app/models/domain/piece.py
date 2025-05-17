@@ -1,7 +1,7 @@
-"""Domain model for a Parqués game piece.
+"""Modelo de dominio para una ficha del juego Parqués.
 
-Defines the Piece class, representing a single game piece and its state,
-including movement, jail status, and safety checks.
+Define la clase Piece, que representa una sola ficha del juego y su estado,
+incluyendo movimiento, estado en la cárcel y verificaciones de seguridad.
 """
 
 import uuid
@@ -16,15 +16,16 @@ SquareId = Union[int, Tuple[str, Optional[Color], Optional[int]]]
 
 
 class Piece:
-    """Represents a single Parqués game piece.
+    """
+    Representa una sola ficha del juego de Parqués.
 
-    Attributes:
-        id: Unique global identifier for the piece.
-        color: The color of the piece.
-        position: The current square ID or None if in jail.
-        is_in_jail: Whether the piece is currently in jail.
-        has_reached_cielo: Whether the piece has reached the final goal.
-        squares_advanced_in_path: Number of squares advanced in the final path.
+    Atributos:
+        id: Identificador global único para la ficha.
+        color: El color de la ficha.
+        position: El ID de la casilla actual o None si está en la cárcel.
+        is_in_jail: Indica si la ficha está en la cárcel.
+        has_reached_cielo: Indica si la ficha ha llegado al cielo.
+        squares_advanced_in_path: Número de casillas avanzadas en el pasillo final.
     """
 
     id: uuid.UUID
@@ -35,11 +36,12 @@ class Piece:
     squares_advanced_in_path: int
 
     def __init__(self, piece_id: int, color: Color) -> None:
-        """Initializes a new Piece.
+        """
+        Inicializa una nueva ficha.
 
         Args:
-            piece_id: The player-relative ID of the piece (0-3).
-            color: The color assigned to the piece.
+            piece_id: ID relativo al jugador de la ficha (0-3).
+            color: Color asignado a la ficha.
         """
         self.id = uuid.uuid4()
         self.piece_player_id = piece_id
@@ -50,7 +52,9 @@ class Piece:
         self.squares_advanced_in_path = 0
 
     def __repr__(self) -> str:
-        """Returns a string representation of the piece."""
+        """
+        Retorna una representación en cadena de la ficha.
+        """
         status = "Jail"
         if self.has_reached_cielo:
             status = "Cielo"
@@ -65,13 +69,14 @@ class Piece:
         is_meta: bool = False,
         is_cielo: bool = False,
     ) -> None:
-        """Updates the position of the piece.
+        """
+        Actualiza la posición de la ficha.
 
         Args:
-            new_position: The new square ID to move to.
-            is_pasillo: Whether the move is into the final passageway.
-            is_meta: Whether the move is into the meta square.
-            is_cielo: Whether the move is into the final goal (cielo).
+            new_position: Nueva casilla a la que se mueve la ficha.
+            is_pasillo: Indica si el movimiento es hacia el pasillo final.
+            is_meta: Indica si el movimiento es hacia la meta.
+            is_cielo: Indica si el movimiento es hacia el cielo.
         """
         self.position = new_position
         self.is_in_jail = False
@@ -86,20 +91,23 @@ class Piece:
             self.squares_advanced_in_path = 0
 
     def send_to_jail(self) -> None:
-        """Sends the piece to jail, resetting its state."""
+        """
+        Envía la ficha a la cárcel y reinicia su estado.
+        """
         self.is_in_jail = True
         self.position = None
         self.has_reached_cielo = False
         self.squares_advanced_in_path = 0
 
     def is_currently_safe(self, board: "Board") -> bool:
-        """Determines if the piece is currently on a safe square.
+        """
+        Determina si la ficha está actualmente en una casilla segura.
 
         Args:
-            board: The game board instance.
+            board: Instancia del tablero de juego.
 
         Returns:
-            True if the piece is in jail, has reached cielo, or is on a safe square; False otherwise.
+            True si la ficha está en la cárcel, ha llegado al cielo o está en una casilla segura; False en caso contrario.
         """
         if self.is_in_jail or self.has_reached_cielo:
             return True

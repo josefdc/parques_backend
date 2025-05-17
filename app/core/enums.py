@@ -1,71 +1,62 @@
-"""Core enumerations used throughout the Parqués game application.
+"""Enumeraciones principales usadas en la aplicación de Parqués.
 
-This module defines enumerations for player colors, square types on the game board,
-possible game states, and types of results from validating a move.
+Define los colores de los jugadores, tipos de casillas, estados de la partida y resultados de movimientos.
 """
 from enum import Enum
 
-class Color(str, Enum): # Inherit from str
-    """Enumeration for player colors.
-
-    Values are uppercase strings for explicit API request/response handling.
-    """
+class Color(str, Enum):
+    """Colores de los jugadores."""
     RED = "RED"
     GREEN = "GREEN"
     BLUE = "BLUE"
     YELLOW = "YELLOW"
-    # Potential future extension for more players:
-    # ORANGE = "ORANGE"
-    # PURPLE = "PURPLE"
 
     def __str__(self) -> str:
-        # Returns lowercase name (e.g., "red") if str() is called on enum member.
-        # Pydantic with use_enum_values=True will use the value (e.g., "RED") for serialization.
         return self.name.lower()
 
 class SquareType(Enum):
-    """Enumeration for the types of squares on the game board."""
+    """Tipos de casillas en el tablero."""
     NORMAL = "normal"
-    SALIDA = "salida"  # Casilla de inicio para cada color después de la cárcel
-    SEGURO = "seguro"  # Casilla segura donde no se puede capturar
-    ENTRADA_PASILLO = "entrada_pasillo" # Casilla que da acceso al pasillo final
-    PASILLO = "pasillo" # Casillas del pasillo final de cada color
-    META = "meta"      # La última casilla del pasillo antes del cielo (a veces llamada cielo parcial)
-    CIELO = "cielo"    # Destino final de las fichas
-    CARCEL = "carcel"  # Represents the jail area where pieces start or return to.
+    SALIDA = "salida"
+    SEGURO = "seguro"
+    ENTRADA_PASILLO = "entrada_pasillo"
+    PASILLO = "pasillo"
+    META = "meta"
+    CIELO = "cielo"
+    CARCEL = "carcel"
 
     def __str__(self) -> str:
         return self.value
 
 class GameState(Enum):
-    """Enumeration for the possible states of a game."""
-    WAITING_PLAYERS = "waiting_players"  # Esperando jugadores (< 2 conectados)
-    READY_TO_START = "ready_to_start"    # 2-4 jugadores conectados, listos para iniciar
-    IN_PROGRESS = "in_progress"          # Partida activa
-    FINISHED = "finished"                # Partida terminada (alguien ha ganado)
-    ABORTED = "aborted"                  # Partida abortada (opcional, for handling game interruption)
+    """Estados posibles de una partida."""
+    WAITING_PLAYERS = "waiting_players"
+    READY_TO_START = "ready_to_start"
+    IN_PROGRESS = "in_progress"
+    FINISHED = "finished"
+    ABORTED = "aborted"
 
     def __str__(self) -> str:
         return self.value
 
 class MoveResultType(Enum):
-    """Enumeration for the possible outcomes of a validated piece move."""
-    OK = "ok"                         # Movimiento válido
-    BLOCKED_BY_OWN = "blocked_by_own" # Bloqueado por una barrera propia en la salida
-    BLOCKED_BY_WALL = "blocked_by_wall" # Bloqueado por una barrera de otro jugador
-    CAPTURE = "capture"               # Movimiento resulta en captura
-    EXACT_ROLL_NEEDED = "exact_roll_needed" # Se necesita tiro exacto para entrar/ganar
-    OUT_OF_BOUNDS = "out_of_bounds"   # Movimiento fuera de los límites (ej. se pasa de la meta)
-    JAIL_EXIT_SUCCESS = "jail_exit_success" # Salió de la cárcel
-    JAIL_EXIT_FAIL_NO_PAIRS = "jail_exit_fail_no_pairs" # No sacó pares para salir de cárcel
-    JAIL_EXIT_FAIL_OCCUPIED_START = "jail_exit_fail_occupied_start" # Casilla de salida ocupada por barrera propia
-    PIECE_WINS = "piece_wins"         # La ficha llega al cielo
-    GAME_WINS = "game_wins"           # Todas las fichas del jugador llegan al cielo
-    INVALID_PIECE = "invalid_piece"   # La ficha seleccionada no es válida para mover
-    INVALID_ROLL = "invalid_roll"     # El tiro de dados no permite mover la ficha seleccionada
+    """Resultados posibles al validar un movimiento de ficha."""
+    OK = "ok"
+    BLOCKED_BY_OWN = "blocked_by_own"
+    BLOCKED_BY_WALL = "blocked_by_wall"
+    CAPTURE = "capture"
+    EXACT_ROLL_NEEDED = "exact_roll_needed"
+    OUT_OF_BOUNDS = "out_of_bounds"
+    JAIL_EXIT_SUCCESS = "jail_exit_success"
+    JAIL_EXIT_FAIL_NO_PAIRS = "jail_exit_fail_no_pairs"
+    JAIL_EXIT_FAIL_OCCUPIED_START = "jail_exit_fail_occupied_start"
+    PIECE_WINS = "piece_wins"
+    GAME_WINS = "game_wins"
+    INVALID_PIECE = "invalid_piece"
+    INVALID_ROLL = "invalid_roll"
     NOT_YOUR_TURN = "not_your_turn"
-    THREE_PAIRS_BURN = "three_pairs_burn" # Quemada por tres pares
-    ACTION_FAILED = "action_failed"   # Default for unspecified errors
+    THREE_PAIRS_BURN = "three_pairs_burn"
+    ACTION_FAILED = "action_failed"
 
     def __str__(self) -> str:
         return self.value

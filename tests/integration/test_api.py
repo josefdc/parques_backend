@@ -15,7 +15,9 @@ from app.models.domain.game import MIN_PLAYERS, MAX_PLAYERS
 
 @pytest.fixture
 async def async_client() -> httpx.AsyncClient:
-    """Provides an asynchronous HTTP client for API tests."""
+    """
+    Provee un cliente HTTP asíncrono para pruebas de API.
+    """
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
         print("Cliente HTTP asíncrono para tests inicializado (scope: function).")
         yield client
@@ -23,10 +25,14 @@ async def async_client() -> httpx.AsyncClient:
 
 @pytest.mark.asyncio
 class TestGameAPI:
-    """Integration tests for main game API flows."""
+    """
+    Pruebas de integración para los flujos principales de la API del juego.
+    """
 
     async def test_create_join_start_get_state_flow(self, async_client: httpx.AsyncClient):
-        """Test the full flow: create game, join, start, and get state."""
+        """
+        Prueba el flujo completo: crear partida, unirse, iniciar y obtener estado.
+        """
         # 1. Crear una nueva partida para 2 jugadores
         creator_user_id = "player_api_1"
         creator_color = Color.RED.value # Usar .value para enviar el string "RED"
@@ -113,7 +119,9 @@ class TestGameAPI:
         print("Estado completo del juego verificado.")
 
     async def test_create_game_fail_invalid_max_players_too_low(self, async_client: httpx.AsyncClient):
-        """Test creating a game with too few players fails with 422."""
+        """
+        Prueba que crear una partida con pocos jugadores falla con 422.
+        """
         response = await async_client.post(
             "/api/v1/games",
             json={
@@ -127,7 +135,9 @@ class TestGameAPI:
         assert "input should be greater than or equal to" in response.text.lower() or f"el número máximo de jugadores debe estar entre {MIN_PLAYERS} y {MAX_PLAYERS}".lower() in response.text.lower()
 
     async def test_create_game_fail_invalid_max_players_too_high(self, async_client: httpx.AsyncClient):
-        """Test creating a game with too many players fails with 400."""
+        """
+        Prueba que crear una partida con demasiados jugadores falla con 400.
+        """
         response = await async_client.post(
             "/api/v1/games",
             json={
@@ -141,7 +151,9 @@ class TestGameAPI:
 
     @pytest.mark.parametrize("missing_field", ["max_players", "creator_user_id", "creator_color"])
     async def test_create_game_fail_missing_fields(self, async_client: httpx.AsyncClient, missing_field: str):
-        """Test creating a game with missing required fields fails appropriately."""
+        """
+        Prueba que crear una partida con campos requeridos faltantes falla apropiadamente.
+        """
         payload = {
             "max_players": 2, # Provide a valid default for when other fields are tested
             "creator_user_id": "test_user_missing",
@@ -171,7 +183,9 @@ class TestGameAPI:
             assert "Field required" in response.text or "missing" in response.text.lower() # Common Pydantic error messages
 
     async def _create_game(self, async_client: httpx.AsyncClient, creator_user_id: str, creator_color: Color, max_players: int = 2) -> Dict[str, Any]:
-        """Helper to create a game for use in other tests."""
+        """
+        Ayudante para crear una partida para otras pruebas.
+        """
         response = await async_client.post(
             "/api/v1/games",
             json={
@@ -184,7 +198,9 @@ class TestGameAPI:
         return response.json()
 
     async def test_join_game_fail_game_not_found(self, async_client: httpx.AsyncClient):
-        """Test joining a non-existent game returns 404."""
+        """
+        Prueba que unirse a una partida inexistente retorna 404.
+        """
         non_existent_game_id = uuid.uuid4()
         response = await async_client.post(
             f"/api/v1/games/{non_existent_game_id}/join",
@@ -194,7 +210,9 @@ class TestGameAPI:
         assert f"Partida con ID {non_existent_game_id} no encontrada" in response.text
 
     async def test_join_game_fail_not_waiting_players(self, async_client: httpx.AsyncClient):
-        """Test joining a game that is not waiting for players fails."""
+        """
+        Prueba que unirse a una partida que no espera jugadores falla.
+        """
         game_info = await self._create_game(async_client, "creator_started", Color.RED, 2)
         game_id = game_info["id"]
         
@@ -214,7 +232,9 @@ class TestGameAPI:
         assert "La partida no está esperando jugadores" in response_join_started.text
 
     async def test_join_game_fail_game_full(self, async_client: httpx.AsyncClient):
-        """Test joining a full game fails with appropriate error."""
+        """
+        Prueba que unirse a una partida llena falla con el error apropiado.
+        """
         game_info = await self._create_game(async_client, "creator_full", Color.RED, 2)
         game_id = game_info["id"]
         
@@ -250,7 +270,9 @@ class TestGameAPI:
         assert "La partida no está esperando jugadores" in response_join_full.text # Or "La partida ya está llena." depending on exact service logic order and state transitions.
 
     async def test_join_game_fail_color_taken(self, async_client: httpx.AsyncClient):
-        """Test joining a game with a color already taken fails."""
+        """
+        Prueba que unirse a una partida con un color ya tomado falla.
+        """
         game_info = await self._create_game(async_client, "creator_color_clash", Color.RED, 2)
         game_id = game_info["id"]
 
@@ -262,7 +284,9 @@ class TestGameAPI:
         assert f"El color {Color.RED.name} ya está tomado" in response_join_color_taken.text # .name should work now
 
     async def test_join_game_fail_user_already_joined(self, async_client: httpx.AsyncClient):
-        """Test joining a game with a user already in the game fails."""
+        """
+        Prueba que unirse a una partida con un usuario ya presente falla.
+        """
         creator_id = "user_already_in_game"
         game_info = await self._create_game(async_client, creator_id, Color.RED, 2)
         game_id = game_info["id"]
@@ -277,7 +301,9 @@ class TestGameAPI:
 
     @pytest.mark.parametrize("missing_field", ["user_id", "color"])
     async def test_join_game_fail_missing_fields(self, async_client: httpx.AsyncClient, missing_field: str):
-        """Test joining a game with missing required fields fails."""
+        """
+        Prueba que unirse a una partida con campos requeridos faltantes falla.
+        """
         game_info = await self._create_game(async_client, "creator_join_missing", Color.RED, 2)
         game_id = game_info["id"]
         payload = {"user_id": "joiner_missing", "color": Color.BLUE.value}
@@ -286,7 +312,9 @@ class TestGameAPI:
         assert response.status_code == 422
 
     async def test_start_game_fail_game_not_found(self, async_client: httpx.AsyncClient):
-        """Test starting a non-existent game returns 404."""
+        """
+        Prueba que iniciar una partida inexistente retorna 404.
+        """
         non_existent_game_id = uuid.uuid4()
         response = await async_client.post(
             f"/api/v1/games/{non_existent_game_id}/start",
@@ -296,7 +324,9 @@ class TestGameAPI:
         assert f"Partida con ID {non_existent_game_id} no encontrada" in response.text
 
     async def test_start_game_fail_not_ready_to_start(self, async_client: httpx.AsyncClient):
-        """Test starting a game that is not ready fails."""
+        """
+        Prueba que iniciar una partida que no está lista falla.
+        """
         # Game with 1 player, max 2. State is WAITING_PLAYERS.
         game_info = await self._create_game(async_client, "creator_not_ready", Color.RED, 2)
         game_id = game_info["id"]
@@ -309,7 +339,9 @@ class TestGameAPI:
         assert "La partida no está lista para iniciar o ya ha comenzado" in response.text
 
     async def test_start_game_fail_user_not_in_game(self, async_client: httpx.AsyncClient):
-        """Test starting a game by a user not in the game fails."""
+        """
+        Prueba que iniciar una partida por un usuario no presente falla.
+        """
         game_info = await self._create_game(async_client, "creator_start_valid", Color.RED, 2)
         game_id = game_info["id"]
         await async_client.post(f"/api/v1/games/{game_id}/join", json={"user_id": "joiner_start_valid", "color": Color.GREEN.value})
@@ -322,7 +354,9 @@ class TestGameAPI:
         assert "no tiene permiso para iniciar la partida" in response.text # Message might vary
 
     async def test_start_game_fail_missing_header(self, async_client: httpx.AsyncClient):
-        """Test starting a game without the X-User-ID header fails."""
+        """
+        Prueba que iniciar una partida sin el header X-User-ID falla.
+        """
         game_info = await self._create_game(async_client, "creator_header", Color.RED, 2)
         game_id = game_info["id"]
         await async_client.post(f"/api/v1/games/{game_id}/join", json={"user_id": "joiner_header", "color": Color.GREEN.value})
@@ -333,7 +367,9 @@ class TestGameAPI:
         # For example: assert "X-User-ID header is required" in response.text or similar based on actual error
 
     async def test_get_game_state_fail_game_not_found(self, async_client: httpx.AsyncClient):
-        """Test getting the state of a non-existent game returns 404."""
+        """
+        Prueba que obtener el estado de una partida inexistente retorna 404.
+        """
         non_existent_game_id = uuid.uuid4()
         response = await async_client.get(f"/api/v1/games/{non_existent_game_id}/state")
         assert response.status_code == 404

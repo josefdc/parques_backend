@@ -12,6 +12,9 @@ from app.rules.move_validator import MoveValidator
 
 @pytest.fixture
 def mock_game_repo() -> AsyncMock:
+    """
+    Provee un repositorio de juegos simulado (mock) para pruebas.
+    """
     repo = AsyncMock()
     repo.get_by_id = AsyncMock(return_value=None)
     repo.save = AsyncMock()
@@ -20,10 +23,16 @@ def mock_game_repo() -> AsyncMock:
 
 @pytest.fixture
 def move_validator_instance() -> MoveValidator:
+    """
+    Provee una instancia de MoveValidator para pruebas.
+    """
     return MoveValidator()
 
 @pytest.fixture
 def dice_roller_instance() -> Dice:
+    """
+    Provee una instancia de Dice para pruebas.
+    """
     return Dice()
 
 @pytest.fixture
@@ -32,6 +41,9 @@ def game_service(
     move_validator_instance: MoveValidator,
     dice_roller_instance: Dice
 ) -> GameService:
+    """
+    Provee una instancia de GameService para pruebas.
+    """
     return GameService(
         repository=mock_game_repo,
         validator=move_validator_instance,
@@ -40,6 +52,9 @@ def game_service(
 
 @pytest.fixture
 def started_game_with_two_players() -> GameAggregate:
+    """
+    Crea un juego iniciado con dos jugadores.
+    """
     game = GameAggregate(game_id=uuid.uuid4(), max_players_limit=2)
     player_red = Player(user_id="user_red", color_input=Color.RED)
     player_green = Player(user_id="user_green", color_input=Color.GREEN)
@@ -51,6 +66,9 @@ def started_game_with_two_players() -> GameAggregate:
 @pytest.mark.asyncio
 class TestGameServiceCreateAndJoin:
     async def test_create_new_game(self, game_service: GameService, mock_game_repo: AsyncMock):
+        """
+        Verifica la creación de una nueva partida.
+        """
         creator_id = "user1"
         creator_color = Color.RED
         max_p = 4
@@ -66,6 +84,9 @@ class TestGameServiceCreateAndJoin:
         mock_game_repo.save.assert_called_once_with(created_game)
 
     async def test_create_new_game_fail_invalid_max_players_too_low(self, game_service: GameService):
+        """
+        Verifica que falle si el número máximo de jugadores es demasiado bajo.
+        """
         creator_id = "user_test"
         creator_color = Color.BLUE
         invalid_max_players = MIN_PLAYERS - 1 # Menor que MIN_PLAYERS
@@ -76,6 +97,9 @@ class TestGameServiceCreateAndJoin:
             await game_service.create_new_game(creator_id, creator_color, invalid_max_players)
 
     async def test_create_new_game_fail_invalid_max_players_too_high(self, game_service: GameService):
+        """
+        Verifica que falle si el número máximo de jugadores es demasiado alto.
+        """
         creator_id = "user_test"
         creator_color = Color.GREEN
         invalid_max_players = MAX_PLAYERS + 1 # Mayor que MAX_PLAYERS
@@ -86,6 +110,9 @@ class TestGameServiceCreateAndJoin:
             await game_service.create_new_game(creator_id, creator_color, invalid_max_players)
 
     async def test_join_game_fail_game_not_found(self, game_service: GameService, mock_game_repo: AsyncMock):
+        """
+        Verifica que falle si la partida no existe.
+        """
         non_existent_game_id = uuid.uuid4()
         
         # Configurar el mock para que devuelva None cuando se busque este ID
@@ -105,6 +132,9 @@ class TestGameServiceCreateAndJoin:
         mock_game_repo.save.assert_not_called()
 
     async def test_join_game_success(self, game_service: GameService, mock_game_repo: AsyncMock):
+        """
+        Verifica que un usuario pueda unirse exitosamente a una partida.
+        """
         game_id = uuid.uuid4()
         existing_game = GameAggregate(game_id=game_id, max_players_limit=4)
         initial_player = Player(user_id="user_creator", color_input=Color.RED)
@@ -123,6 +153,9 @@ class TestGameServiceCreateAndJoin:
         mock_game_repo.save.assert_called_once_with(joined_game_state)
 
     async def test_join_game_fail_if_not_waiting_players(self, game_service: GameService, mock_game_repo: AsyncMock):
+        """
+        Verifica que falle si la partida no está esperando jugadores.
+        """
         game_id = uuid.uuid4()
         # Crear un juego que NO está en estado WAITING_PLAYERS
         game_not_waiting = GameAggregate(game_id=game_id, max_players_limit=2)
@@ -146,6 +179,9 @@ class TestGameServiceCreateAndJoin:
         mock_game_repo.save.assert_not_called()
 
     async def test_join_game_fail_if_full(self, game_service: GameService, mock_game_repo: AsyncMock):
+        """
+        Verifica que falle si la partida ya está llena.
+        """
         game_id = uuid.uuid4()
         full_game = GameAggregate(game_id=game_id, max_players_limit=2)
         player1_added = full_game.add_player(Player(user_id="user1", color_input=Color.RED))
@@ -162,6 +198,9 @@ class TestGameServiceCreateAndJoin:
             await game_service.join_game(game_id, "user_new", Color.BLUE)
 
     async def test_join_game_fail_if_color_taken(self, game_service: GameService, mock_game_repo: AsyncMock):
+        """
+        Verifica que falle si el color solicitado ya está tomado.
+        """
         game_id = uuid.uuid4()
         existing_game = GameAggregate(game_id=game_id, max_players_limit=4)
         # Jugador 1 ya tomó el color ROJO
@@ -176,6 +215,9 @@ class TestGameServiceCreateAndJoin:
             await game_service.join_game(game_id, user_id_joiner, requested_color)
 
     async def test_start_game_success(self, game_service: GameService, mock_game_repo: AsyncMock):
+        """
+        Verifica que se pueda iniciar una partida correctamente.
+        """
         from app.models.domain.game import MIN_PLAYERS
 
         game_id = uuid.uuid4()
@@ -207,8 +249,11 @@ class TestGameServiceRollAndMove:
         game_service: GameService,
         mock_game_repo: AsyncMock,
         started_game_with_two_players: GameAggregate,
-        monkeypatch: pytest.MonkeyPatch  # Use monkeypatch instead of mocker
+        monkeypatch: pytest.MonkeyPatch
     ):
+        """
+        Verifica que el lanzamiento de dados sea exitoso.
+        """
         game = started_game_with_two_players
         mock_game_repo.get_by_id.return_value = game
         
@@ -232,6 +277,9 @@ class TestGameServiceRollAndMove:
         mock_game_repo: AsyncMock,
         started_game_with_two_players: GameAggregate
     ):
+        """
+        Verifica que falle si no es el turno del jugador.
+        """
         game = started_game_with_two_players
         mock_game_repo.get_by_id.return_value = game
         
@@ -243,6 +291,9 @@ class TestGameServiceRollAndMove:
         game_service: GameService,
         mock_game_repo: AsyncMock
     ):
+        """
+        Verifica que falle si la partida no está en curso.
+        """
         game = GameAggregate(game_id=uuid.uuid4())
         game.state = GameState.WAITING_PLAYERS
         player_red = Player(user_id="user_red", color_input=Color.RED)
@@ -257,8 +308,11 @@ class TestGameServiceRollAndMove:
         game_service: GameService,
         mock_game_repo: AsyncMock,
         started_game_with_two_players: GameAggregate,
-        monkeypatch: pytest.MonkeyPatch  # Use monkeypatch instead of mocker
+        monkeypatch: pytest.MonkeyPatch
     ):
+        """
+        Verifica el resultado de tres pares en el lanzamiento de dados.
+        """
         game = started_game_with_two_players
         player_red = game.players[Color.RED]
         player_red.consecutive_pairs_count = 2
@@ -281,6 +335,9 @@ class TestGameServiceRollAndMove:
         started_game_with_two_players: GameAggregate,
         mocker: pytest.MonkeyPatch
     ):
+        """
+        Verifica el caso donde no hay movimientos disponibles tras lanzar los dados.
+        """
         game = started_game_with_two_players
         player_red_object = game.players[Color.RED] # Get the Player object
 
@@ -306,6 +363,9 @@ class TestGameServiceRollAndMove:
         started_game_with_two_players: GameAggregate,
         mocker: pytest.MonkeyPatch
     ):
+        """
+        Verifica un movimiento simple de ficha y el pase de turno.
+        """
         game = started_game_with_two_players # RED's turn
         player_red = game.players[Color.RED]
         piece_to_move = player_red.pieces[0]
@@ -348,6 +408,9 @@ class TestGameServiceRollAndMove:
         started_game_with_two_players: GameAggregate,
         mocker: pytest.MonkeyPatch
     ):
+        """
+        Verifica la penalización automática por tres pares consecutivos.
+        """
         game = started_game_with_two_players # RED's turn
         player_red = game.players[Color.RED]
         player_red.consecutive_pairs_count = 3 # Condition for penalty
@@ -377,6 +440,9 @@ class TestGameServiceRollAndMove:
         started_game_with_two_players: GameAggregate,
         mocker: pytest.MonkeyPatch
     ):
+        """
+        Verifica el pase de turno cuando no hay movimientos válidos.
+        """
         game = started_game_with_two_players # RED's turn
         player_red = game.players[Color.RED]
         player_red.consecutive_pairs_count = 1 # Simulate they had a pair but no moves

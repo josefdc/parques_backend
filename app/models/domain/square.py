@@ -14,13 +14,14 @@ if TYPE_CHECKING:
 SquareId = Union[int, Tuple[str, Optional[Color], Optional[int]]]
 
 class Square:
-    """Represents a square on the Parqués game board.
+    """
+    Representa una casilla en el tablero de Parqués.
 
-    Attributes:
-        id: The unique identifier of the square.
-        type: The type of the square (e.g., NORMAL, SEGURO, SALIDA).
-        occupants: List of pieces currently on this square.
-        color_association: The color associated with this square, if any.
+    Atributos:
+        id: Identificador único de la casilla.
+        type: Tipo de la casilla (NORMAL, SEGURO, SALIDA, etc).
+        occupants: Lista de fichas actualmente en esta casilla.
+        color_association: Color asociado a la casilla, si aplica.
     """
     id: SquareId
     type: SquareType
@@ -28,12 +29,13 @@ class Square:
     color_association: Optional[Color]
 
     def __init__(self, square_id: SquareId, square_type: SquareType, color_association: Optional[Color] = None) -> None:
-        """Initializes a new Square.
+        """
+        Inicializa una nueva casilla.
 
         Args:
-            square_id: The unique identifier for the square.
-            square_type: The type of the square.
-            color_association: The color associated with the square, if any.
+            square_id: Identificador único de la casilla.
+            square_type: Tipo de la casilla.
+            color_association: Color asociado a la casilla, si aplica.
         """
         self.id = square_id
         self.type = square_type
@@ -41,7 +43,9 @@ class Square:
         self.color_association = color_association
 
     def __repr__(self) -> str:
-        """Returns a string representation of the square."""
+        """
+        Retorna una representación en cadena de la casilla.
+        """
         occupant_details = []
         for occ in self.occupants:
             detail = f"{occ.color.name}{occ.piece_player_id + 1}"
@@ -51,71 +55,78 @@ class Square:
                 f"Occupants: [{', '.join(occupant_details)}])")
 
     def add_piece(self, piece: 'Piece') -> None:
-        """Adds a piece to the square and updates its position.
+        """
+        Agrega una ficha a la casilla y actualiza su posición.
 
         Args:
-            piece: The Piece to add.
+            piece: La ficha a agregar.
         """
         if piece not in self.occupants:
             self.occupants.append(piece)
             piece.position = self.id
 
     def remove_piece(self, piece: 'Piece') -> None:
-        """Removes a piece from the square.
+        """
+        Remueve una ficha de la casilla.
 
         Args:
-            piece: The Piece to remove.
+            piece: La ficha a remover.
         """
         if piece in self.occupants:
             self.occupants.remove(piece)
-            # Optionally, clear piece.position if sent to jail elsewhere.
+            # La posición de la ficha puede limpiarse si es enviada a la cárcel en otro lugar.
 
     def is_occupied(self) -> bool:
-        """Checks if the square is occupied by any piece.
+        """
+        Verifica si la casilla está ocupada por alguna ficha.
 
         Returns:
-            True if there is at least one occupant, False otherwise.
+            True si hay al menos una ficha, False en caso contrario.
         """
         return len(self.occupants) > 0
 
     def is_occupied_by_color(self, color: Color) -> bool:
-        """Checks if the square is occupied by any piece of a specific color.
+        """
+        Verifica si la casilla está ocupada por alguna ficha de un color específico.
 
         Args:
-            color: The color to check.
+            color: Color a verificar.
 
         Returns:
-            True if any occupant matches the color, False otherwise.
+            True si alguna ficha coincide con el color, False en caso contrario.
         """
         return any(occupant.color == color for occupant in self.occupants)
 
     def get_occupying_pieces_by_color(self, color: Color) -> List['Piece']:
-        """Gets all pieces of a specific color occupying the square.
+        """
+        Obtiene todas las fichas de un color específico que ocupan la casilla.
 
         Args:
-            color: The color to filter by.
+            color: Color por el cual filtrar.
 
         Returns:
-            List of Piece instances matching the color.
+            Lista de fichas que coinciden con el color.
         """
         return [occupant for occupant in self.occupants if occupant.color == color]
 
     def get_other_color_pieces(self, color: Color) -> List['Piece']:
-        """Gets all pieces of colors different from the specified one.
+        """
+        Obtiene todas las fichas de colores diferentes al especificado.
 
         Args:
-            color: The color to exclude.
+            color: Color a excluir.
 
         Returns:
-            List of Piece instances not matching the color.
+            Lista de fichas que no coinciden con el color.
         """
         return [occupant for occupant in self.occupants if occupant.color != color]
 
     def is_forming_wall(self) -> Optional[Color]:
-        """Checks if the square forms a wall (barrier) of two or more pieces of the same color.
+        """
+        Verifica si la casilla forma una barrera (dos o más fichas del mismo color).
 
         Returns:
-            The color forming the wall if present, else None.
+            El color que forma la barrera si existe, si no None.
         """
         if len(self.occupants) >= 2:
             first_piece_color = self.occupants[0].color
@@ -124,15 +135,16 @@ class Square:
         return None
 
     def is_safe_square_for_piece(self, piece_color: Color) -> bool:
-        """Determines if this square is intrinsically safe for a piece of a given color.
+        """
+        Determina si esta casilla es intrínsecamente segura para una ficha de un color dado.
 
-        Does not consider the presence of other pieces.
+        No considera la presencia de otras fichas.
 
         Args:
-            piece_color: The color of the piece to check safety for.
+            piece_color: Color de la ficha a verificar.
 
         Returns:
-            True if the square is safe for the piece, False otherwise.
+            True si la casilla es segura para la ficha, False en caso contrario.
         """
         if self.type == SquareType.SEGURO:
             return True

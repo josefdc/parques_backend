@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 
 
 class MoveValidator:
-    """Validates dice rolls and piece movements according to Parqués rules."""
+    """
+    Valida los lanzamientos de dados y movimientos de fichas según las reglas de Parqués.
+    """
 
     def validate_and_process_roll(
         self,
@@ -26,16 +28,17 @@ class MoveValidator:
         d1: int,
         d2: int
     ) -> MoveResultType:
-        """Validates a dice roll and updates the game/player state for pairs.
+        """
+        Valida un lanzamiento de dados y actualiza el estado de pares del jugador.
 
         Args:
-            game: The current game aggregate.
-            player_color: The color of the player rolling the dice.
-            d1: Value of the first die.
-            d2: Value of the second die.
+            game: Instancia actual del juego.
+            player_color: Color del jugador que lanza los dados.
+            d1: Valor del primer dado.
+            d2: Valor del segundo dado.
 
         Returns:
-            The MoveResultType indicating the result of the roll.
+            MoveResultType indicando el resultado del tiro.
         """
         player = game.get_player(player_color)
         if not player:
@@ -72,17 +75,18 @@ class MoveValidator:
         d1: int,
         d2: int
     ) -> Dict[str, List[Tuple['SquareId', MoveResultType, int]]]:
-        """Returns all possible moves for a player given a dice roll.
+        """
+        Retorna todos los movimientos posibles para un jugador dado un tiro de dados.
 
         Args:
-            game: The current game aggregate.
-            player_color: The color of the player.
-            d1: Value of the first die.
-            d2: Value of the second die.
+            game: Instancia actual del juego.
+            player_color: Color del jugador.
+            d1: Valor del primer dado.
+            d2: Valor del segundo dado.
 
         Returns:
-            A dictionary mapping piece UUIDs (as strings) to lists of possible moves.
-            Each move is a tuple: (target_square_id, move_result_type, steps_used).
+            Diccionario que mapea UUID de ficha a lista de movimientos posibles.
+            Cada movimiento es una tupla: (target_square_id, move_result_type, steps_used).
         """
         player = game.get_player(player_color)
         if not player or game.current_turn_color != player_color:
@@ -157,16 +161,17 @@ class MoveValidator:
         steps: int,
         is_roll_pairs: bool
     ) -> Tuple[MoveResultType, Optional['SquareId']]:
-        """Internal logic to validate a single move attempt.
+        """
+        Lógica interna para validar un intento de movimiento.
 
         Args:
-            game: The current game aggregate.
-            piece_to_move: The piece to attempt to move.
-            steps: Number of steps to move (0 for jail exit attempt).
-            is_roll_pairs: Whether the dice roll was a pair.
+            game: Instancia actual del juego.
+            piece_to_move: Ficha a mover.
+            steps: Número de pasos a mover (0 para intento de salir de cárcel).
+            is_roll_pairs: Si el tiro fue un par.
 
         Returns:
-            A tuple of (MoveResultType, target_square_id or None).
+            Tupla de (MoveResultType, target_square_id o None).
         """
         board = game.board
 

@@ -1,8 +1,7 @@
 #app/repositories/game_repository.py
-"""In-memory repository implementation for Parqués games.
+"""Implementación en memoria del repositorio de partidas de Parqués.
 
-Provides a simple dictionary-based storage for game aggregates,
-suitable for development and testing.
+Almacena las partidas en un diccionario con UUID como clave.
 """
 from __future__ import annotations
 import uuid
@@ -14,61 +13,61 @@ if TYPE_CHECKING:
     from app.models.domain.game import GameAggregate
 
 class InMemoryGameRepository(GameRepository):
-    """In-memory implementation of the Parqués game repository.
+    """Implementación en memoria del repositorio de partidas de Parqués.
 
-    Stores games in a dictionary keyed by UUID.
+    Almacena las partidas en un diccionario con UUID como clave.
     """
     _games: Dict[uuid.UUID, 'GameAggregate']
 
     def __init__(self) -> None:
-        """Initializes the in-memory game repository."""
+        """Inicializa el repositorio en memoria."""
         self._games: Dict[uuid.UUID, 'GameAggregate'] = {}
-        print("InMemoryGameRepository initialized.")  # For debug
+        print("InMemoryGameRepository initialized.")  # Debug
 
     async def get_by_id(self, game_id: uuid.UUID) -> Optional['GameAggregate']:
-        """Retrieve a game by its ID.
+        """Recupera una partida por su ID.
 
         Args:
-            game_id: The unique identifier of the game.
+            game_id: Identificador único de la partida.
 
         Returns:
-            The GameAggregate instance if found, else None.
+            Instancia de GameAggregate si se encuentra, si no None.
         """
-        print(f"InMemoryGameRepository: Attempting to get game by ID: {game_id}")  # For debug
+        print(f"InMemoryGameRepository: Attempting to get game by ID: {game_id}")  # Debug
         return self._games.get(game_id)
 
     async def save(self, game: 'GameAggregate') -> None:
-        """Save (create or update) a game in the repository.
+        """Guarda (crea o actualiza) una partida en el repositorio.
 
         Args:
-            game: The GameAggregate instance to save.
+            game: Instancia de GameAggregate a guardar.
         """
-        print(f"InMemoryGameRepository: Saving game ID: {game.id}, State: {game.state}")  # For debug
+        print(f"InMemoryGameRepository: Saving game ID: {game.id}, State: {game.state}")  # Debug
         self._games[game.id] = game
 
     async def delete(self, game_id: uuid.UUID) -> bool:
-        """Delete a game from the repository.
+        """Elimina una partida del repositorio.
 
         Args:
-            game_id: The unique identifier of the game to delete.
+            game_id: Identificador único de la partida a eliminar.
 
         Returns:
-            True if the game was deleted, False if not found.
+            True si la partida fue eliminada, False si no se encontró.
         """
-        print(f"InMemoryGameRepository: Attempting to delete game ID: {game_id}")  # For debug
+        print(f"InMemoryGameRepository: Attempting to delete game ID: {game_id}")  # Debug
         if game_id in self._games:
             del self._games[game_id]
             return True
         return False
 
     async def get_all_active(self) -> List['GameAggregate']:
-        """Retrieve all active or waiting games.
+        """Recupera todas las partidas activas o en espera.
 
         Returns:
-            A list of GameAggregate instances representing active or waiting games.
+            Lista de instancias GameAggregate activas o en espera.
         """
         from app.core.enums import GameState
-        print("InMemoryGameRepository: Getting all active games.")  # For debug
+        print("InMemoryGameRepository: Getting all active games.")  # Debug
         active_games = [
             game for game in self._games.values()
             if game.state not in [GameState.FINISHED, GameState.ABORTED]
@@ -76,10 +75,10 @@ class InMemoryGameRepository(GameRepository):
         return active_games
 
     async def get_all(self) -> List['GameAggregate']:
-        """Retrieve all games, regardless of state.
+        """Recupera todas las partidas, sin importar el estado.
 
         Returns:
-            A list of all GameAggregate instances.
+            Lista de todas las instancias GameAggregate.
         """
-        print("InMemoryGameRepository: Getting all games.")  # For debug
+        print("InMemoryGameRepository: Getting all games.")  # Debug
         return list(self._games.values())

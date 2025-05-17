@@ -1,8 +1,8 @@
 #app/models/domain/piece.py
-"""Domain model for a Parqués game player.
+"""Modelo de dominio para un jugador de Parqués.
 
-Defines the Player class, representing a player and their pieces,
-including methods for piece management and win condition checks.
+Define la clase Player, que representa a un jugador y sus fichas,
+incluyendo métodos para la gestión de fichas y verificación de condiciones de victoria.
 """
 from __future__ import annotations
 from typing import List, TYPE_CHECKING, Optional, Union
@@ -16,31 +16,33 @@ if TYPE_CHECKING:
 PIECES_PER_PLAYER = 4
 
 class Player:
-    """Represents a player in a Parqués game.
-
-    Attributes:
-        user_id: Unique identifier for the user (e.g., session ID, username).
-        color: The color assigned to the player.
-        pieces: List of the player's pieces.
-        has_won: Whether the player has won the game.
-        consecutive_pairs_count: Counter for consecutive pairs rolled by the player.
     """
-    user_id: str # Identificador único del usuario (puede ser un ID de sesión, nombre, etc.)
+    Representa un jugador en una partida de Parqués.
+
+    Atributos:
+        user_id: Identificador único del usuario.
+        color: Color asignado al jugador.
+        pieces: Lista de fichas del jugador.
+        has_won: Indica si el jugador ha ganado la partida.
+        consecutive_pairs_count: Contador de pares consecutivos lanzados por el jugador.
+    """
+    user_id: str
     color: Color
     pieces: List['Piece']
     has_won: bool
     consecutive_pairs_count: int
 
     def __init__(self, user_id: str, color_input: Union[Color, str]) -> None:
-        """Initializes a new Player.
+        """
+        Inicializa un nuevo jugador.
 
         Args:
-            user_id: The unique identifier for the user.
-            color_input: The color assigned to the player (Color or str).
+            user_id: Identificador único del usuario.
+            color_input: Color asignado al jugador (Color o str).
 
         Raises:
-            ValueError: If the color string is invalid.
-            TypeError: If color_input is not a Color or str.
+            ValueError: Si el color es inválido.
+            TypeError: Si color_input no es Color ni str.
         """
         from app.models.domain.piece import Piece # Importación local para evitar problemas de carga inicial
 
@@ -61,32 +63,43 @@ class Player:
         self.consecutive_pairs_count = 0
 
     def __repr__(self) -> str:
-        """Returns a string representation of the player."""
+        """
+        Retorna una representación en cadena del jugador.
+        """
         return f"Player(UserID: {self.user_id}, Color: {self.color.name}, Pieces in Jail: {self.get_jailed_pieces_count()})"
 
     def get_jailed_pieces(self) -> List['Piece']:
-        """Returns a list of the player's pieces that are currently in jail."""
+        """
+        Retorna una lista de las fichas del jugador que están en la cárcel.
+        """
         return [piece for piece in self.pieces if piece.is_in_jail]
 
     def get_jailed_pieces_count(self) -> int:
-        """Returns the number of the player's pieces that are currently in jail."""
+        """
+        Retorna el número de fichas del jugador que están en la cárcel.
+        """
         return len(self.get_jailed_pieces())
 
     def get_pieces_in_play(self) -> List['Piece']:
-        """Returns a list of the player's pieces that are on the board (not in jail or cielo)."""
+        """
+        Retorna una lista de las fichas del jugador que están en juego (no en la cárcel ni en cielo).
+        """
         return [
             piece for piece in self.pieces if not piece.is_in_jail and not piece.has_reached_cielo
         ]
 
     def get_pieces_in_cielo_count(self) -> int:
-        """Returns the number of the player's pieces that have reached cielo."""
+        """
+        Retorna el número de fichas del jugador que han llegado al cielo.
+        """
         return sum(1 for piece in self.pieces if piece.has_reached_cielo)
 
     def check_win_condition(self) -> bool:
-        """Checks if the player has won (all pieces in cielo).
+        """
+        Verifica si el jugador ha ganado (todas las fichas en cielo).
 
         Returns:
-            True if the player has won, False otherwise.
+            True si el jugador ha ganado, False en caso contrario.
         """
         if self.get_pieces_in_cielo_count() == PIECES_PER_PLAYER:
             self.has_won = True
@@ -94,13 +107,14 @@ class Player:
         return False
 
     def get_piece_by_id(self, piece_internal_id: int) -> Optional['Piece']:
-        """Gets a specific piece by its internal player-relative ID (0 to PIECES_PER_PLAYER - 1).
+        """
+        Obtiene una ficha específica por su ID interno relativo al jugador (0 a PIECES_PER_PLAYER - 1).
 
         Args:
-            piece_internal_id: The internal ID of the piece.
+            piece_internal_id: ID interno de la ficha.
 
         Returns:
-            The Piece instance if found, else None.
+            La instancia de Piece si se encuentra, si no None.
         """
         if 0 <= piece_internal_id < len(self.pieces):
             for piece in self.pieces:
@@ -109,13 +123,14 @@ class Player:
         return None
 
     def get_piece_by_uuid(self, piece_uuid_str: str) -> Optional['Piece']:
-        """Gets a specific piece by its global UUID.
+        """
+        Obtiene una ficha específica por su UUID global.
 
         Args:
-            piece_uuid_str: The UUID string of the piece.
+            piece_uuid_str: UUID de la ficha.
 
         Returns:
-            The Piece instance if found, else None.
+            La instancia de Piece si se encuentra, si no None.
         """
         try:
             import uuid
@@ -128,9 +143,13 @@ class Player:
         return None
 
     def reset_consecutive_pairs(self) -> None:
-        """Resets the consecutive pairs counter."""
+        """
+        Reinicia el contador de pares consecutivos.
+        """
         self.consecutive_pairs_count = 0
 
     def increment_consecutive_pairs(self) -> None:
-        """Increments the consecutive pairs counter."""
+        """
+        Incrementa el contador de pares consecutivos.
+        """
         self.consecutive_pairs_count += 1

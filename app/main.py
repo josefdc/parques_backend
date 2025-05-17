@@ -25,14 +25,8 @@ from fastapi.requests import Request
 
 @app.exception_handler(GameServiceError)
 async def game_service_exception_handler(request: Request, exc: GameServiceError):
-    """Handles GameServiceError exceptions globally and returns a standardized response.
-
-    Args:
-        request: The incoming HTTP request.
-        exc: The GameServiceError exception instance.
-
-    Returns:
-        JSONResponse: A response with appropriate status code and error details.
+    """
+    Maneja excepciones GameServiceError globalmente y retorna una respuesta estandarizada.
     """
     status_code = 400
     if isinstance(exc, GameNotFoundError):
@@ -62,5 +56,7 @@ app.include_router(
 
 @app.get("/", tags=["Root"])
 async def read_root():
-    """Root endpoint for health check and welcome message."""
+    """
+    Endpoint raíz para verificación y mensaje de bienvenida.
+    """
     return {"message": f"Bienvenido al {settings.PROJECT_NAME} v{settings.PROJECT_VERSION}"}
