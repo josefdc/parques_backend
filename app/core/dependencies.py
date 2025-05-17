@@ -1,4 +1,11 @@
-#app/core/dependencies.py
+"""Dependency injection setup for the application.
+
+This module configures and provides dependencies, such as services and repositories,
+to be injected into FastAPI path operations. It utilizes a simple singleton pattern
+for instantiating shared resources like the game repository, dice roller, and
+move validator.
+"""
+
 from typing import Annotated
 from fastapi import Depends
 
@@ -14,6 +21,14 @@ dice_roller_instance: Dice = Dice()
 move_validator_instance: MoveValidator = MoveValidator()
 
 def create_game_service() -> GameService:
+    """Creates and returns an instance of GameService.
+
+    This factory function initializes the GameService with its required
+    dependencies (repository, validator, dice_roller).
+
+    Returns:
+        An instance of GameService.
+    """
     return GameService(
         repository=game_repository_instance,
         validator=move_validator_instance,
@@ -21,12 +36,19 @@ def create_game_service() -> GameService:
     )
 
 async def get_game_service_dependency() -> GameService:
-    # In a real application, this could involve more complex setup,
-    # like getting a DB session, etc. For now, it's simple.
+    """FastAPI dependency to get a GameService instance.
+
+    In a more complex application, this function might handle tasks like
+    obtaining a database session. For this application, it simply returns
+    an instance created by `create_game_service`.
+
+    Returns:
+        An instance of GameService.
+    """
     return create_game_service()
 
-# La dependencia anotada que se usará en los endpoints
+# Annotated dependency to be used in FastAPI path operations
 GameServiceDep = Annotated[GameService, Depends(get_game_service_dependency)]
 
-# UserIdDep could also be moved here if it's used across multiple routers,
-# but for now, as per your example, it can stay in game_routes.py if only used there.
+# Note: UserIdDep could be moved here if used across multiple routers.
+# Currently, it remains in game_routes.py as it's only used there.

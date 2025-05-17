@@ -1,10 +1,11 @@
+#tests/unit/test_services.py
 import pytest
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 from app.core.enums import Color, GameState, MoveResultType, SquareType
 from app.services.game_service import GameService, GameServiceError, NotPlayerTurnError, PlayerNotInGameError, GameNotFoundError
-from app.models.domain.game import GameAggregate
+from app.models.domain.game import GameAggregate, MIN_PLAYERS, MAX_PLAYERS
 from app.models.domain.player import Player
 from app.rules.dice import Dice
 from app.rules.move_validator import MoveValidator
@@ -40,8 +41,8 @@ def game_service(
 @pytest.fixture
 def started_game_with_two_players() -> GameAggregate:
     game = GameAggregate(game_id=uuid.uuid4(), max_players_limit=2)
-    player_red = Player(user_id="user_red", color=Color.RED)
-    player_green = Player(user_id="user_green", color=Color.GREEN)
+    player_red = Player(user_id="user_red", color_input=Color.RED)
+    player_green = Player(user_id="user_green", color_input=Color.GREEN)
     game.add_player(player_red)
     game.add_player(player_green)
     game.start_game() # RED starts
@@ -64,10 +65,49 @@ class TestGameServiceCreateAndJoin:
         assert created_game.state in (GameState.READY_TO_START, GameState.WAITING_PLAYERS)
         mock_game_repo.save.assert_called_once_with(created_game)
 
+    async def test_create_new_game_fail_invalid_max_players_too_low(self, game_service: GameService):
+        creator_id = "user_test"
+        creator_color = Color.BLUE
+        invalid_max_players = MIN_PLAYERS - 1 # Menor que MIN_PLAYERS
+
+        expected_message = f"El número máximo de jugadores debe estar entre {MIN_PLAYERS} y {MAX_PLAYERS}."
+
+        with pytest.raises(GameServiceError, match=expected_message):
+            await game_service.create_new_game(creator_id, creator_color, invalid_max_players)
+
+    async def test_create_new_game_fail_invalid_max_players_too_high(self, game_service: GameService):
+        creator_id = "user_test"
+        creator_color = Color.GREEN
+        invalid_max_players = MAX_PLAYERS + 1 # Mayor que MAX_PLAYERS
+
+        expected_message = f"El número máximo de jugadores debe estar entre {MIN_PLAYERS} y {MAX_PLAYERS}."
+        
+        with pytest.raises(GameServiceError, match=expected_message):
+            await game_service.create_new_game(creator_id, creator_color, invalid_max_players)
+
+    async def test_join_game_fail_game_not_found(self, game_service: GameService, mock_game_repo: AsyncMock):
+        non_existent_game_id = uuid.uuid4()
+        
+        # Configurar el mock para que devuelva None cuando se busque este ID
+        mock_game_repo.get_by_id.return_value = None
+
+        user_trying_to_join = "user_ghost"
+        color_for_ghost_user = Color.GREEN
+
+        # Verificar que se lanza GameNotFoundError
+        expected_message = f"Partida con ID {non_existent_game_id} no encontrada."
+        with pytest.raises(GameNotFoundError, match=expected_message):
+            await game_service.join_game(non_existent_game_id, user_trying_to_join, color_for_ghost_user)
+        
+        # Verificar que get_by_id fue llamado con el ID correcto
+        mock_game_repo.get_by_id.assert_called_once_with(non_existent_game_id)
+        # Asegurarse de que save no fue llamado
+        mock_game_repo.save.assert_not_called()
+
     async def test_join_game_success(self, game_service: GameService, mock_game_repo: AsyncMock):
         game_id = uuid.uuid4()
         existing_game = GameAggregate(game_id=game_id, max_players_limit=4)
-        initial_player = Player(user_id="user_creator", color=Color.RED)
+        initial_player = Player(user_id="user_creator", color_input=Color.RED)
         existing_game.add_player(initial_player)
         existing_game.state = GameState.WAITING_PLAYERS
         mock_game_repo.get_by_id.return_value = existing_game
@@ -82,16 +122,40 @@ class TestGameServiceCreateAndJoin:
         assert joined_game_state.state == GameState.READY_TO_START
         mock_game_repo.save.assert_called_once_with(joined_game_state)
 
+    async def test_join_game_fail_if_not_waiting_players(self, game_service: GameService, mock_game_repo: AsyncMock):
+        game_id = uuid.uuid4()
+        # Crear un juego que NO está en estado WAITING_PLAYERS
+        game_not_waiting = GameAggregate(game_id=game_id, max_players_limit=2)
+        
+        # Añadir un jugador inicial para que no esté vacío (opcional, pero realista)
+        player1 = Player(user_id="user1", color_input=Color.RED)
+        game_not_waiting.add_player(player1)
+        
+        # Establecer el estado a IN_PROGRESS (o cualquier estado que no sea WAITING_PLAYERS)
+        game_not_waiting.state = GameState.IN_PROGRESS 
+        
+        mock_game_repo.get_by_id.return_value = game_not_waiting
+
+        user_trying_to_join = "user_late"
+        color_for_late_user = Color.BLUE
+
+        with pytest.raises(GameServiceError, match="La partida no está esperando jugadores."):
+            await game_service.join_game(game_id, user_trying_to_join, color_for_late_user)
+        
+        # Asegurarse de que save no fue llamado porque la operación debería haber fallado antes
+        mock_game_repo.save.assert_not_called()
+
     async def test_join_game_fail_if_full(self, game_service: GameService, mock_game_repo: AsyncMock):
         game_id = uuid.uuid4()
         full_game = GameAggregate(game_id=game_id, max_players_limit=2)
-        player1_added = full_game.add_player(Player(user_id="user1", color=Color.RED))
+        player1_added = full_game.add_player(Player(user_id="user1", color_input=Color.RED))
         assert player1_added is True
-        player2_added = full_game.add_player(Player(user_id="user2", color=Color.GREEN))
+        player2_added = full_game.add_player(Player(user_id="user2", color_input=Color.GREEN))
         assert player2_added is True
         assert len(full_game.players) == full_game.max_players
-        # Forzar el estado para que la comprobación de "lleno" sea la que falle
-        full_game.state = GameState.WAITING_PLAYERS
+        # Forzar el estado para que la comprobación de "lleno" sea la que falle,
+        # después de que la comprobación de game.state != GameState.WAITING_PLAYERS pase.
+        full_game.state = GameState.WAITING_PLAYERS # Sobrescribir el estado para el test
         mock_game_repo.get_by_id.return_value = full_game
 
         with pytest.raises(GameServiceError, match="La partida ya está llena."):
@@ -101,7 +165,7 @@ class TestGameServiceCreateAndJoin:
         game_id = uuid.uuid4()
         existing_game = GameAggregate(game_id=game_id, max_players_limit=4)
         # Jugador 1 ya tomó el color ROJO
-        player1 = Player(user_id="user1", color=Color.RED)
+        player1 = Player(user_id="user1", color_input=Color.RED)
         existing_game.add_player(player1)
         existing_game.state = GameState.WAITING_PLAYERS
         mock_game_repo.get_by_id.return_value = existing_game
@@ -117,8 +181,8 @@ class TestGameServiceCreateAndJoin:
         game_id = uuid.uuid4()
         game_to_start = GameAggregate(game_id=game_id, max_players_limit=4)
         players_to_add = [
-            Player(user_id="user1", color=Color.RED),
-            Player(user_id="user2", color=Color.GREEN)
+            Player(user_id="user1", color_input=Color.RED),
+            Player(user_id="user2", color_input=Color.GREEN)
         ]
         assert len(players_to_add) >= MIN_PLAYERS
 
@@ -181,7 +245,7 @@ class TestGameServiceRollAndMove:
     ):
         game = GameAggregate(game_id=uuid.uuid4())
         game.state = GameState.WAITING_PLAYERS
-        player_red = Player(user_id="user_red", color=Color.RED)
+        player_red = Player(user_id="user_red", color_input=Color.RED)
         game.add_player(player_red) # Add player to avoid PlayerNotInGameError
         mock_game_repo.get_by_id.return_value = game
 
@@ -218,6 +282,13 @@ class TestGameServiceRollAndMove:
         mocker: pytest.MonkeyPatch
     ):
         game = started_game_with_two_players
+        player_red_object = game.players[Color.RED] # Get the Player object
+
+        # Ensure player_red has one piece out of jail for the "no_valid_moves" event condition
+        if player_red_object.pieces:
+            piece_to_free = player_red_object.pieces[0]
+            piece_to_free.is_in_jail = False
+
         mock_game_repo.get_by_id.return_value = game
         mocker.patch.object(game_service._dice, 'roll', return_value=(1, 2))
         mocker.patch.object(game_service._validator, 'get_possible_moves', return_value={}) # No moves
@@ -240,11 +311,17 @@ class TestGameServiceRollAndMove:
         piece_to_move = player_red.pieces[0]
         piece_to_move.is_in_jail = False
         initial_pos_id = game.board.get_salida_square_id_for_color(Color.RED)
-        game.board.get_square(initial_pos_id).add_piece(piece_to_move)
+        # Ensure the salida square exists before adding a piece.
+        salida_square = game.board.get_square(initial_pos_id)
+        assert salida_square is not None
+        salida_square.add_piece(piece_to_move)
         
         target_pos_id = game.board.advance_piece_logic(initial_pos_id, 3, Color.RED)
-        original_roll = (1, 2)
         steps_for_move = 3
+
+        # Simulate that dice have been rolled for this turn
+        game.last_dice_roll = (1, 2) # Or any roll that justifies the move
+        game.dice_roll_count = 1 # Simulate one roll has occurred
 
         mock_game_repo.get_by_id.return_value = game
         mocker.patch.object(
@@ -255,7 +332,7 @@ class TestGameServiceRollAndMove:
         mock_add_event = mocker.patch.object(game, '_add_game_event')
 
         updated_game = await game_service.move_piece(
-            game.id, "user_red", str(piece_to_move.id), target_pos_id, steps_for_move, original_roll
+            game.id, "user_red", str(piece_to_move.id), target_pos_id, steps_for_move
         )
 
         assert piece_to_move.position == target_pos_id

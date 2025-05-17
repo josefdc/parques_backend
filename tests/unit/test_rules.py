@@ -1,4 +1,9 @@
-import pytest # type: ignore
+"""Unit tests for Parqués game rules and validators.
+
+This module contains unit tests for dice rolling, move validation,
+and board logic in the Parqués backend.
+"""
+import pytest  # type: ignore
 import uuid
 from typing import List, Tuple, Optional
 
@@ -15,17 +20,17 @@ from app.rules.move_validator import MoveValidator
 
 @pytest.fixture
 def move_validator() -> MoveValidator:
-    """Fixture para obtener una instancia de MoveValidator."""
+    """Provides a MoveValidator instance for tests."""
     return MoveValidator()
 
 @pytest.fixture
 def game_4_players() -> GameAggregate:
-    """Fixture para crear una partida básica con 4 jugadores, lista para empezar."""
+    """Creates a basic game with 4 players, ready to start."""
     game = GameAggregate(game_id=uuid.uuid4(), max_players_limit=4)
-    player_red = Player(user_id="user_red", color=Color.RED)
-    player_green = Player(user_id="user_green", color=Color.GREEN)
-    player_blue = Player(user_id="user_blue", color=Color.BLUE)
-    player_yellow = Player(user_id="user_yellow", color=Color.YELLOW)
+    player_red = Player(user_id="user_red", color_input=Color.RED)
+    player_green = Player(user_id="user_green", color_input=Color.GREEN)
+    player_blue = Player(user_id="user_blue", color_input=Color.BLUE)
+    player_yellow = Player(user_id="user_yellow", color_input=Color.YELLOW)
     
     game.add_player(player_red)
     game.add_player(player_green)
@@ -37,27 +42,33 @@ def game_4_players() -> GameAggregate:
 
 @pytest.fixture
 def started_game_4_players(game_4_players: GameAggregate) -> GameAggregate:
-    """Fixture para una partida ya iniciada."""
+    """Returns a started game with 4 players."""
     game_4_players.start_game() # Asume que el orden de turn_order es el de adición
     return game_4_players
 
 # --- Pruebas para Dice ---
 
 class TestDice:
+    """Unit tests for Dice utility methods."""
+
     def test_roll_dice(self):
-        """Verifica que los dados devuelvan valores dentro del rango."""
+        """Checks that dice roll values are within the valid range."""
         d1, d2 = Dice.roll()
         assert 1 <= d1 <= 6
         assert 1 <= d2 <= 6
 
     def test_are_pairs(self):
+        """Checks that are_pairs correctly identifies pairs."""
         assert Dice.are_pairs(3, 3) is True
         assert Dice.are_pairs(1, 6) is False
 
 # --- Pruebas para MoveValidator ---
 
 class TestMoveValidatorValidateAndProcessRoll:
+    """Unit tests for MoveValidator.validate_and_process_roll."""
+
     def test_roll_no_pairs(self, move_validator: MoveValidator, game_4_players: GameAggregate):
+        """Checks that rolling no pairs resets the consecutive pairs count."""
         game = game_4_players
         player = game.players[Color.RED]
         player.consecutive_pairs_count = 1 # Simula que venía de un par
@@ -69,6 +80,7 @@ class TestMoveValidatorValidateAndProcessRoll:
         assert game.current_player_doubles_count == 0 # Se actualiza o se resetea en next_turn
 
     def test_roll_first_pair(self, move_validator: MoveValidator, game_4_players: GameAggregate):
+        """Checks that rolling the first pair increments the count."""
         game = game_4_players
         player = game.players[Color.RED]
         
@@ -79,6 +91,7 @@ class TestMoveValidatorValidateAndProcessRoll:
         assert game.current_player_doubles_count == 1
 
     def test_roll_second_pair(self, move_validator: MoveValidator, game_4_players: GameAggregate):
+        """Checks that rolling a second pair increments the count."""
         game = game_4_players
         player = game.players[Color.RED]
         player.consecutive_pairs_count = 1 # Venía del primer par
@@ -91,6 +104,7 @@ class TestMoveValidatorValidateAndProcessRoll:
         assert game.current_player_doubles_count == 2
         
     def test_roll_third_pair_burns(self, move_validator: MoveValidator, game_4_players: GameAggregate):
+        """Checks that rolling a third pair triggers the burn penalty."""
         game = game_4_players
         player = game.players[Color.RED]
         player.consecutive_pairs_count = 2 # Venía del segundo par
@@ -104,8 +118,10 @@ class TestMoveValidatorValidateAndProcessRoll:
 
 
 class TestMoveValidatorGetPossibleMovesAndValidate:
+    """Unit tests for MoveValidator.get_possible_moves and related logic."""
 
     def test_exit_jail_with_pairs(self, move_validator: MoveValidator, game_4_players: GameAggregate):
+        """Checks that a piece can exit jail with pairs."""
         game = game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -154,6 +170,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert found_jail_exit_move is True, f"No se encontró JAIL_EXIT_SUCCESS. possible_moves_dict fue: {possible_moves_dict}"
 
     def test_exit_jail_no_pairs_fail(self, move_validator: MoveValidator, game_4_players: GameAggregate):
+        """Checks that a piece cannot exit jail without pairs."""
         game = game_4_players
         player_color = Color.RED
         # Ficha en cárcel
@@ -168,6 +185,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
                 assert result_type != MoveResultType.JAIL_EXIT_SUCCESS
     
     def test_move_piece_on_board_simple(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks a simple move on the board with valid steps."""
         game = started_game_4_players # Juego iniciado, turno de ROJO
         player_color = Color.RED
         player = game.players[player_color]
@@ -193,6 +211,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert found_move, f"No se encontró movimiento OK de 5 pasos para la ficha desde {start_pos_id}"
 
     def test_move_to_capture(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece can capture another piece."""
         game = started_game_4_players
         attacker_color = Color.RED
         defender_color = Color.GREEN
@@ -226,6 +245,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert found_capture_move, "No se encontró movimiento de captura esperado."
 
     def test_move_to_safe_square_occupied_by_other_is_blocked(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that moving to a safe square occupied by another color is blocked."""
         game = started_game_4_players
         attacker_color = Color.RED
         defender_color = Color.GREEN
@@ -262,6 +282,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert found_blocked_move, "Esperaba BLOCKED_BY_WALL al intentar mover a seguro ocupado por otro."
 
     def test_exit_jail_fail_if_occupied_by_own_barrier(self, move_validator: MoveValidator, game_4_players: GameAggregate):
+        """Checks that a piece cannot exit jail if the salida is blocked by own barrier."""
         game = game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -318,6 +339,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
             pass # Esto es aceptable si los movimientos fallidos no se añaden.
 
     def test_move_normal_to_empty_square(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks moving to an empty square is allowed."""
         game = started_game_4_players # Juego ya iniciado, turno de ROJO
         player_color = Color.RED
         player = game.players[player_color]
@@ -355,6 +377,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert found_move_2_steps, f"No se encontró movimiento OK de 2 pasos a casilla vacía {expected_target_2}"
 
     def test_move_to_form_own_pair_on_square(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece can form a pair with another of the same color."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -388,6 +411,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert found_move_to_pair, f"No se encontró movimiento OK para formar par en casilla {pos_piece1}"
 
     def test_move_fail_if_target_has_own_two_pieces(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that moving to a square with two own pieces is blocked."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -438,6 +462,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
             assert not found_ok_move_to_full_square, "No debería haber un movimiento OK a una casilla ya llena con fichas propias."
 
     def test_move_into_passageway(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece can enter the passageway."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -474,6 +499,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
             f"No se encontró movimiento OK a la primera casilla del pasillo {expected_passageway_entry_id}. Movimientos: {moves_for_piece}"
 
     def test_move_within_passageway(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece can move within the passageway."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -505,6 +531,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
             f"No se encontró movimiento OK dentro del pasillo a {expected_passageway_target_id}. Movimientos: {moves_for_piece}"
 
     def test_reach_meta_square(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece can reach the meta square."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -539,6 +566,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert game.board.get_square(expected_meta_id).type == SquareType.META
 
     def test_reach_cielo_exact_roll(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece can reach cielo with an exact roll."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -570,6 +598,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
             f"No se encontró movimiento PIECE_WINS al CIELO. Movimientos: {moves_for_piece}"
 
     def test_reach_cielo_fail_if_roll_too_high_from_meta(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece cannot reach cielo if the roll is too high from meta."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]
@@ -605,6 +634,7 @@ class TestMoveValidatorGetPossibleMovesAndValidate:
         assert not found_piece_wins, "No debería haber PIECE_WINS si el tiro es muy alto desde META."
 
     def test_move_from_cielo_is_not_possible(self, move_validator: MoveValidator, started_game_4_players: GameAggregate):
+        """Checks that a piece already in cielo cannot move."""
         game = started_game_4_players
         player_color = Color.RED
         player = game.players[player_color]

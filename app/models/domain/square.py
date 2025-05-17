@@ -1,103 +1,138 @@
-#app/models/domain/piece.py
-from __future__ import annotations # Necesario para usar 'Piece' sin comillas en Python < 3.9-3.10
-                                 # En Python 3.10+ es el comportamiento por defecto.
-                                 # Para versiones más antiguas, o si prefieres ser explícito,
-                                 # puedes usar 'Piece' (como string) en las anotaciones.
+"""Domain model for a Parqués game board.
 
+Defines the Square class, representing a board square, its type, occupants,
+and utility methods for game logic such as safety and wall detection.
+"""
+from __future__ import annotations
 from typing import List, Union, Tuple, Optional, TYPE_CHECKING
 
 from app.core.enums import SquareType, Color
 
-# Este bloque solo se ejecuta durante el chequeo de tipos (ej. con MyPy)
-# Evita errores de importación circular en runtime.
 if TYPE_CHECKING:
-    from app.models.domain.piece import Piece # Importación para el chequeo de tipos
+    from app.models.domain.piece import Piece
 
-
-# Definimos SquareId de nuevo para claridad en este módulo, o puedes centralizarlo
-# en un archivo de tipos comunes si se usa extensamente.
 SquareId = Union[int, Tuple[str, Optional[Color], Optional[int]]]
 
-
 class Square:
-    """
-    Representa una casilla en el tablero de Parqués.
+    """Represents a square on the Parqués game board.
+
+    Attributes:
+        id: The unique identifier of the square.
+        type: The type of the square (e.g., NORMAL, SEGURO, SALIDA).
+        occupants: List of pieces currently on this square.
+        color_association: The color associated with this square, if any.
     """
     id: SquareId
     type: SquareType
-    occupants: List[Piece] # Ahora usa la forward reference 'Piece'
-    # Atributo opcional para casillas de salida/entrada/pasillo/meta para saber a qué color pertenecen
+    occupants: List['Piece']
     color_association: Optional[Color]
 
-    def __init__(self, square_id: SquareId, square_type: SquareType, color_association: Optional[Color] = None):
+    def __init__(self, square_id: SquareId, square_type: SquareType, color_association: Optional[Color] = None) -> None:
+        """Initializes a new Square.
+
+        Args:
+            square_id: The unique identifier for the square.
+            square_type: The type of the square.
+            color_association: The color associated with the square, if any.
+        """
         self.id = square_id
         self.type = square_type
         self.occupants = []
         self.color_association = color_association
 
     def __repr__(self) -> str:
+        """Returns a string representation of the square."""
         occupant_details = []
         for occ in self.occupants:
-            # Accedemos a los atributos de Piece asumiendo que ya está definida
             detail = f"{occ.color.name}{occ.piece_player_id + 1}"
             occupant_details.append(detail)
-
         return (f"Square(ID: {self.id}, Type: {self.type.name}, "
                 f"ColorAssoc: {self.color_association.name if self.color_association else 'N/A'}, "
                 f"Occupants: [{', '.join(occupant_details)}])")
 
-    def add_piece(self, piece: Piece):
-        """Añade una ficha a la casilla."""
+    def add_piece(self, piece: 'Piece') -> None:
+        """Adds a piece to the square and updates its position.
+
+        Args:
+            piece: The Piece to add.
+        """
         if piece not in self.occupants:
             self.occupants.append(piece)
-            piece.position = self.id # Actualiza la posición en la ficha
+            piece.position = self.id
 
-    def remove_piece(self, piece: Piece):
-        """Remueve una ficha de la casilla."""
+    def remove_piece(self, piece: 'Piece') -> None:
+        """Removes a piece from the square.
+
+        Args:
+            piece: The Piece to remove.
+        """
         if piece in self.occupants:
             self.occupants.remove(piece)
-            # Opcionalmente, podrías querer limpiar la posición en la ficha si se va a la cárcel
-            # if piece.is_in_jail:
-            #     piece.position = None
+            # Optionally, clear piece.position if sent to jail elsewhere.
 
     def is_occupied(self) -> bool:
-        """Verifica si la casilla está ocupada."""
+        """Checks if the square is occupied by any piece.
+
+        Returns:
+            True if there is at least one occupant, False otherwise.
+        """
         return len(self.occupants) > 0
 
     def is_occupied_by_color(self, color: Color) -> bool:
-        """Verifica si la casilla está ocupada por alguna ficha de un color específico."""
+        """Checks if the square is occupied by any piece of a specific color.
+
+        Args:
+            color: The color to check.
+
+        Returns:
+            True if any occupant matches the color, False otherwise.
+        """
         return any(occupant.color == color for occupant in self.occupants)
 
-    def get_occupying_pieces_by_color(self, color: Color) -> List[Piece]:
-        """Obtiene todas las fichas de un color específico que ocupan la casilla."""
+    def get_occupying_pieces_by_color(self, color: Color) -> List['Piece']:
+        """Gets all pieces of a specific color occupying the square.
+
+        Args:
+            color: The color to filter by.
+
+        Returns:
+            List of Piece instances matching the color.
+        """
         return [occupant for occupant in self.occupants if occupant.color == color]
 
-    def get_other_color_pieces(self, color: Color) -> List[Piece]:
-        """Obtiene todas las fichas de colores DIFERENTES al especificado que ocupan la casilla."""
+    def get_other_color_pieces(self, color: Color) -> List['Piece']:
+        """Gets all pieces of colors different from the specified one.
+
+        Args:
+            color: The color to exclude.
+
+        Returns:
+            List of Piece instances not matching the color.
+        """
         return [occupant for occupant in self.occupants if occupant.color != color]
 
     def is_forming_wall(self) -> Optional[Color]:
-        """
-        Verifica si las fichas en esta casilla forman una barrera (muro).
-        Una barrera se forma si hay dos fichas del mismo color en una casilla que no sea SALIDA ni SEGURO.
-        (La regla de no formar barrera en SALIDA/SEGURO se aplicaría al *permitir* el movimiento a la casilla).
-        Aquí solo detectamos si hay dos del mismo color.
-        Devuelve el color de la barrera si existe, sino None.
+        """Checks if the square forms a wall (barrier) of two or more pieces of the same color.
+
+        Returns:
+            The color forming the wall if present, else None.
         """
         if len(self.occupants) >= 2:
-            # Se asume que todas las fichas en una casilla de barrera deben ser del mismo color.
-            # Si una casilla puede tener múltiples fichas de diferentes colores y aún así una pareja
-            # forma barrera, la lógica necesitaría ser más compleja.
-            # Para Parqués, usualmente 2 fichas del mismo color en una casilla normal o de entrada es barrera.
             first_piece_color = self.occupants[0].color
             if all(p.color == first_piece_color for p in self.occupants):
                 return first_piece_color
         return None
 
     def is_safe_square_for_piece(self, piece_color: Color) -> bool:
-        """
-        Determina si esta casilla es intrínsecamente segura para una ficha de un color dado.
-        No considera si hay otras fichas.
+        """Determines if this square is intrinsically safe for a piece of a given color.
+
+        Does not consider the presence of other pieces.
+
+        Args:
+            piece_color: The color of the piece to check safety for.
+
+        Returns:
+            True if the square is safe for the piece, False otherwise.
         """
         if self.type == SquareType.SEGURO:
             return True
@@ -106,6 +141,6 @@ class Square:
         if self.type in [SquareType.PASILLO, SquareType.ENTRADA_PASILLO, SquareType.META] and \
            self.color_association == piece_color:
             return True
-        if self.type == SquareType.CIELO: # El cielo es seguro
+        if self.type == SquareType.CIELO:
             return True
         return False

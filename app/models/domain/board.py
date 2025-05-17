@@ -1,12 +1,16 @@
-#app/models/domain/board.py
+"""Domain model for the Parqués game board.
+
+Defines the Board class, which represents the game board, its squares,
+and the logic for player movement paths and square lookups.
+"""
 from __future__ import annotations
 from typing import List, Dict, Union, Tuple, Optional, TYPE_CHECKING
 
 from app.core.enums import Color, SquareType
-from app.models.domain.square import Square, SquareId # Square ya está definido
+from app.models.domain.square import Square, SquareId
 
 if TYPE_CHECKING:
-    from app.models.domain.piece import Piece # Para type hinting en métodos si es necesario
+    from app.models.domain.piece import Piece
 
 # Constantes del tablero para 4 jugadores según tu documento
 NUM_MAIN_TRACK_SQUARES = 68
@@ -38,24 +42,24 @@ ENTRADA_PASILLO_INDICES = {
 
 
 class Board:
-    """
-    Representa el tablero de juego de Parqués.
-    Contiene todas las casillas y define los caminos para cada color.
+    """Represents the Parqués game board.
+
+    Contains all squares and defines the movement paths for each player color.
     """
     squares: Dict[SquareId, Square]
-    paths: Dict[Color, List[SquareId]] # El camino completo para cada color, incluyendo pasillo y meta
-    # Podríamos añadir también una referencia al cielo, aunque es una única casilla
-    cielo_square_id: SquareId 
+    paths: Dict[Color, List[SquareId]]
+    cielo_square_id: SquareId
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initializes the board with all squares and player paths."""
         self.squares = {}
         self.paths = {}
-        self.cielo_square_id = ('cielo', None, 0) # ID único para el cielo
+        self.cielo_square_id = ('cielo', None, 0)
         self._initialize_board()
         self._initialize_paths()
 
-    def _initialize_board(self):
-        """Crea todas las casillas del tablero."""
+    def _initialize_board(self) -> None:
+        """Creates all squares on the board, including main track, passages, and cielo."""
         # 1. Casillas de la pista principal (normales, salidas, seguros, entradas a pasillo)
         for i in range(NUM_MAIN_TRACK_SQUARES):
             square_id: SquareId = i
@@ -106,8 +110,8 @@ class Board:
         #     self.squares[carcel_id] = Square(carcel_id, SquareType.CARCEL, color)
 
 
-    def _initialize_paths(self):
-        """Define el recorrido completo para cada color."""
+    def _initialize_paths(self) -> None:
+        """Defines the complete movement path for each player color."""
         for color in Color:
             path: List[SquareId] = []
             salida_idx = SALIDA_SQUARES_INDICES[color]
@@ -138,26 +142,61 @@ class Board:
             self.paths[color] = path
 
     def get_square(self, square_id: SquareId) -> Optional[Square]:
-        """Obtiene una casilla por su ID."""
+        """Get a square by its ID.
+
+        Args:
+            square_id: The ID of the square to retrieve.
+
+        Returns:
+            The Square object if found, else None.
+        """
         return self.squares.get(square_id)
 
     def get_salida_square_id_for_color(self, color: Color) -> int:
-        """Devuelve el ID de la casilla de SALIDA para un color."""
+        """Get the SALIDA square ID for a given color.
+
+        Args:
+            color: The player color.
+
+        Returns:
+            The integer ID of the salida square.
+        """
         return SALIDA_SQUARES_INDICES[color]
 
     def get_entrada_pasillo_square_id_for_color(self, color: Color) -> int:
-        """Devuelve el ID de la casilla de ENTRADA_PASILLO para un color."""
+        """Get the ENTRADA_PASILLO square ID for a given color.
+
+        Args:
+            color: The player color.
+
+        Returns:
+            The integer ID of the entrada_pasillo square.
+        """
         return ENTRADA_PASILLO_INDICES[color]
 
     def get_player_path(self, color: Color) -> List[SquareId]:
-        """Devuelve la lista de IDs de casillas que componen el camino de un jugador."""
+        """Get the list of square IDs that make up a player's path.
+
+        Args:
+            color: The player color.
+
+        Returns:
+            List of SquareId objects representing the player's movement path.
+        """
         return self.paths.get(color, [])
 
-    def get_next_square_id_in_path(self, current_pos_in_path: SquareId, color: Color, steps: int) -> Optional[SquareId]:
-        """
-        Devuelve el ID de la casilla destino dado una posición actual en el camino del jugador,
-        el color del jugador y el número de pasos.
-        Retorna None si el movimiento es inválido o se pasa del cielo.
+    def get_next_square_id_in_path(
+        self, current_pos_in_path: SquareId, color: Color, steps: int
+    ) -> Optional[SquareId]:
+        """Get the destination square ID given a player's current position, color, and steps.
+
+        Args:
+            current_pos_in_path: The current position in the player's path.
+            color: The player color.
+            steps: Number of steps to advance.
+
+        Returns:
+            The target SquareId, or None if the move is invalid or overshoots the goal.
         """
         player_path = self.get_player_path(color)
         if not player_path:
@@ -178,16 +217,32 @@ class Board:
             return None # O manejar como tiro inválido si no es exacto para cielo
 
     def _get_main_track_position_after_steps(self, start_square_id: int, steps: int) -> int:
-        """Calcula la posición en la pista principal después de un número de pasos."""
+        """Calculate the main track position after a number of steps.
+
+        Args:
+            start_square_id: The starting square ID (int).
+            steps: Number of steps to advance.
+
+        Returns:
+            The resulting square ID after moving the given steps.
+        """
         return (start_square_id + steps) % NUM_MAIN_TRACK_SQUARES
 
-    def advance_piece_logic(self, current_square_id: SquareId, steps: int, piece_color: Color) -> Optional[SquareId]:
-        """
-        Lógica de avance mejorada basada en tu pseudocódigo 'advance'.
-        Devuelve la casilla destino o None si el movimiento rebasa la meta final (cielo)
-        o si se requiere un tiro exacto y no se cumple.
+    def advance_piece_logic(
+        self, current_square_id: SquareId, steps: int, piece_color: Color
+    ) -> Optional[SquareId]:
+        """Core logic for advancing a piece on the board.
 
-        Esta lógica es compleja y es el núcleo del movimiento.
+        Determines the destination square given the current square, number of steps, and piece color.
+        Returns None if the move overshoots the goal or is otherwise invalid.
+
+        Args:
+            current_square_id: The current square ID of the piece.
+            steps: Number of steps to advance.
+            piece_color: The color of the piece.
+
+        Returns:
+            The destination SquareId, or None if the move is invalid.
         """
         # Caso 0: Si está en la cárcel, no puede usar esta función. Salida de cárcel es un movimiento especial.
         if current_square_id is None: # Asumiendo que None significa cárcel para la posición de la ficha

@@ -1,9 +1,13 @@
-#app/rules/move_validator.py
+"""Move validation logic for Parqués.
+
+This module defines the MoveValidator class, which validates dice rolls and piece movements
+according to the rules of Colombian Parqués.
+"""
 from __future__ import annotations
-from typing import Tuple, Optional, TYPE_CHECKING, List, Dict # Añadir List y Dict
+from typing import Tuple, Optional, TYPE_CHECKING, List, Dict
 
 from app.core.enums import Color, SquareType, MoveResultType
-from app.models.domain.board import SALIDA_SQUARES_INDICES, PASSAGEWAY_LENGTH # Necesitamos PASSAGEWAY_LENGTH
+from app.models.domain.board import SALIDA_SQUARES_INDICES, PASSAGEWAY_LENGTH
 
 if TYPE_CHECKING:
     from app.models.domain.game import GameAggregate
@@ -13,21 +17,25 @@ if TYPE_CHECKING:
 
 
 class MoveValidator:
-    """
-    Valida los lanzamientos de dados y los movimientos de las fichas
-    según las reglas del Parqués (versión colombiana simplificada).
-    """
+    """Validates dice rolls and piece movements according to Parqués rules."""
 
     def validate_and_process_roll(
         self,
-        game: GameAggregate,
+        game: 'GameAggregate',
         player_color: Color,
         d1: int,
         d2: int
     ) -> MoveResultType:
-        """
-        Valida el resultado de un lanzamiento de dados y actualiza el estado del juego/jugador
-        relacionado con los pares (ej. contador de pares, quemar ficha por 3 pares).
+        """Validates a dice roll and updates the game/player state for pairs.
+
+        Args:
+            game: The current game aggregate.
+            player_color: The color of the player rolling the dice.
+            d1: Value of the first die.
+            d2: Value of the second die.
+
+        Returns:
+            The MoveResultType indicating the result of the roll.
         """
         player = game.get_player(player_color)
         if not player:
@@ -59,11 +67,23 @@ class MoveValidator:
 
     def get_possible_moves(
         self,
-        game: GameAggregate,
+        game: 'GameAggregate',
         player_color: Color,
         d1: int,
         d2: int
-    ) -> Dict[str, List[Tuple[SquareId, MoveResultType, int]]]:
+    ) -> Dict[str, List[Tuple['SquareId', MoveResultType, int]]]:
+        """Returns all possible moves for a player given a dice roll.
+
+        Args:
+            game: The current game aggregate.
+            player_color: The color of the player.
+            d1: Value of the first die.
+            d2: Value of the second die.
+
+        Returns:
+            A dictionary mapping piece UUIDs (as strings) to lists of possible moves.
+            Each move is a tuple: (target_square_id, move_result_type, steps_used).
+        """
         player = game.get_player(player_color)
         if not player or game.current_turn_color != player_color:
             return {}
@@ -132,14 +152,21 @@ class MoveValidator:
 
     def _validate_single_move_attempt(
         self,
-        game: GameAggregate,
-        piece_to_move: Piece,
+        game: 'GameAggregate',
+        piece_to_move: 'Piece',
         steps: int,
         is_roll_pairs: bool
-    ) -> Tuple[MoveResultType, Optional[SquareId]]:
-        """
-        Lógica interna para validar un único intento de movimiento.
-        Esta función es llamada por get_possible_moves.
+    ) -> Tuple[MoveResultType, Optional['SquareId']]:
+        """Internal logic to validate a single move attempt.
+
+        Args:
+            game: The current game aggregate.
+            piece_to_move: The piece to attempt to move.
+            steps: Number of steps to move (0 for jail exit attempt).
+            is_roll_pairs: Whether the dice roll was a pair.
+
+        Returns:
+            A tuple of (MoveResultType, target_square_id or None).
         """
         board = game.board
 

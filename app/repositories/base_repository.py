@@ -1,4 +1,8 @@
-#app/repositories/base_repository.py
+"""Abstract base repository interface for Parqués games.
+
+Defines the contract for repository implementations to manage game persistence.
+"""
+
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, List, TYPE_CHECKING
@@ -9,38 +13,49 @@ if TYPE_CHECKING:
 
 
 class GameRepository(ABC):
-    """
-    Interfaz abstracta para el repositorio de partidas de Parqués.
-    Define los métodos que cualquier implementación de repositorio debe tener.
+    """Abstract interface for a Parqués game repository.
+
+    Any repository implementation (in-memory, database, etc.) must implement these methods.
     """
 
     @abstractmethod
     async def get_by_id(self, game_id: uuid.UUID) -> Optional['GameAggregate']:
-        """
-        Obtiene una partida por su ID.
-        Retorna la partida o None si no se encuentra.
+        """Retrieve a game by its ID.
+
+        Args:
+            game_id: The unique identifier of the game.
+
+        Returns:
+            The GameAggregate instance if found, else None.
         """
         pass
 
     @abstractmethod
     async def save(self, game: 'GameAggregate') -> None:
-        """
-        Guarda (crea o actualiza) una partida en el repositorio.
+        """Save (create or update) a game in the repository.
+
+        Args:
+            game: The GameAggregate instance to save.
         """
         pass
 
     @abstractmethod
     async def delete(self, game_id: uuid.UUID) -> bool:
-        """
-        Elimina una partida del repositorio.
-        Retorna True si se eliminó, False si no se encontró.
+        """Delete a game from the repository.
+
+        Args:
+            game_id: The unique identifier of the game to delete.
+
+        Returns:
+            True if the game was deleted, False if not found.
         """
         pass
 
     @abstractmethod
     async def get_all_active(self) -> List['GameAggregate']:
-        """
-        Obtiene todas las partidas activas o en espera.
-        (Podría ser útil para un lobby o para limpieza).
+        """Retrieve all active or waiting games.
+
+        Returns:
+            A list of GameAggregate instances representing active or waiting games.
         """
         pass

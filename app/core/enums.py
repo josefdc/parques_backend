@@ -1,28 +1,30 @@
-#app/core/enums.py
+"""Core enumerations used throughout the Parqués game application.
+
+This module defines enumerations for player colors, square types on the game board,
+possible game states, and types of results from validating a move.
+"""
 from enum import Enum
 
 class Color(str, Enum): # Inherit from str
-    """
-    Enumeración para los colores de los jugadores.
-    Los valores son strings para ser explícitos en API requests/responses.
+    """Enumeration for player colors.
+
+    Values are uppercase strings for explicit API request/response handling.
     """
     RED = "RED"
     GREEN = "GREEN"
     BLUE = "BLUE"
     YELLOW = "YELLOW"
-    # Podrías añadir más si decides extender a 6 u 8 jugadores en el futuro
+    # Potential future extension for more players:
     # ORANGE = "ORANGE"
     # PURPLE = "PURPLE"
 
-    def __str__(self):
+    def __str__(self) -> str:
         # Returns lowercase name (e.g., "red") if str() is called on enum member.
         # Pydantic with use_enum_values=True will use the value (e.g., "RED") for serialization.
         return self.name.lower()
 
 class SquareType(Enum):
-    """
-    Enumeración para los tipos de casilla en el tablero.
-    """
+    """Enumeration for the types of squares on the game board."""
     NORMAL = "normal"
     SALIDA = "salida"  # Casilla de inicio para cada color después de la cárcel
     SEGURO = "seguro"  # Casilla segura donde no se puede capturar
@@ -30,29 +32,24 @@ class SquareType(Enum):
     PASILLO = "pasillo" # Casillas del pasillo final de cada color
     META = "meta"      # La última casilla del pasillo antes del cielo (a veces llamada cielo parcial)
     CIELO = "cielo"    # Destino final de las fichas
-    CARCEL = "carcel"  # Aunque no explícito en tu SquareType, es un lugar donde están las piezas
+    CARCEL = "carcel"  # Represents the jail area where pieces start or return to.
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 class GameState(Enum):
-    """
-    Enumeración para los estados posibles de una partida.
-    """
+    """Enumeration for the possible states of a game."""
     WAITING_PLAYERS = "waiting_players"  # Esperando jugadores (< 2 conectados)
     READY_TO_START = "ready_to_start"    # 2-4 jugadores conectados, listos para iniciar
     IN_PROGRESS = "in_progress"          # Partida activa
     FINISHED = "finished"                # Partida terminada (alguien ha ganado)
-    ABORTED = "aborted"                  # Partida abortada (opcional, por si quieres manejar esto)
+    ABORTED = "aborted"                  # Partida abortada (opcional, for handling game interruption)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 class MoveResultType(Enum):
-    """
-    Enumeración para los posibles resultados de un movimiento validado.
-    (Adición sugerida basada en la sección 5 de tu documento)
-    """
+    """Enumeration for the possible outcomes of a validated piece move."""
     OK = "ok"                         # Movimiento válido
     BLOCKED_BY_OWN = "blocked_by_own" # Bloqueado por una barrera propia en la salida
     BLOCKED_BY_WALL = "blocked_by_wall" # Bloqueado por una barrera de otro jugador
@@ -70,5 +67,5 @@ class MoveResultType(Enum):
     THREE_PAIRS_BURN = "three_pairs_burn" # Quemada por tres pares
     ACTION_FAILED = "action_failed"   # Default for unspecified errors
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
