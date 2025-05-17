@@ -1,6 +1,6 @@
 # Backend API del Juego de Parqués Distribuido
 
-¡Bienvenido al backend del emocionante juego de Parqués Distribuido! Esta API ha sido desarrollada con FastAPI y está diseñada para ser consumida por clientes (como una aplicación web o móvil) para permitir a los usuarios jugar partidas de Parqués en red.
+Esta API ha sido desarrollada con FastAPI y está diseñada para ser consumida por clientes (como una aplicación web o móvil) para permitir a los usuarios jugar partidas de Parqués en red.
 
 ## 1. Visión General del Proyecto
 
@@ -11,13 +11,13 @@ El objetivo de este proyecto es implementar un juego de Parqués multijugador (2
 * **Gestor de Paquetes y Entorno Virtual:** UV (ver `uv.lock` y `pyproject.toml`)
 * **Testing:** Pytest, `httpx.AsyncClient` para tests de API.
 
-## 2. Configuración del Entorno (Para Desarrolladores del Backend)
+## 2. Configuración del Entorno
 
 Si necesitas correr el backend localmente para desarrollo o pruebas:
 
 1.  **Clona el Repositorio:**
     ```bash
-    git clone <tu-url-del-repositorio>
+    git clone https://github.com/josefdc/parques_backend/
     cd parques_backend
     ```
 
@@ -32,11 +32,9 @@ Si necesitas correr el backend localmente para desarrollo o pruebas:
 
 3.  **Instala las Dependencias:**
     ```bash
-    uv pip install -r requirements.txt  # Si tienes un requirements.txt generado
-    # o, si las dependencias están bien definidas en pyproject.toml:
+    # o, si las dependencias bien definidas en pyproject.toml:
     uv sync
     ```
-    (Consulta el archivo `uv.txt` adjunto para más detalles sobre los comandos de `uv`).
 
 4.  **Ejecuta el Servidor de Desarrollo (FastAPI con Uvicorn):**
     El punto de entrada principal de la aplicación es `app/main.py`.
@@ -44,7 +42,7 @@ Si necesitas correr el backend localmente para desarrollo o pruebas:
     uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
     ```
     * `--reload`: El servidor se reiniciará automáticamente con los cambios en el código.
-    * `--host 0.0.0.0`: Permite el acceso desde otras máquinas en tu red local (útil si el frontend corre en otra máquina/dispositivo).
+    * `--host 0.0.0.0`: Permite el acceso desde otras máquinas en tu red local 
     * `--port 8000`: Puerto estándar, ajústalo si es necesario.
 
 5.  **Accede a la Documentación Interactiva de la API (Swagger UI):**
