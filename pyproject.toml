@@ -1,0 +1,62 @@
+[project]
+name = "parques_backend"
+version = "0.1.0"
+description = "Backend para el juego de Parqués Distribuido"
+authors = [
+    {name = "Tu Nombre", email = "tu@email.com"},
+]
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "python-dotenv",
+    "websockets",
+]
+requires-python = ">=3.8"
+
+[project.optional-dependencies] # <--- CONSERVA ESTA
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "mypy",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# --- AÑADE O MODIFICA ESTA SECCIÓN ---
+[tool.hatch.build.targets.wheel]
+# Indica a Hatchling que el paquete principal a incluir en el wheel
+# es el contenido del directorio 'app'.
+packages = ["app"]
+# ------------------------------------
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "I", "UP", "N", "C4", "B", "A", "RUF"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.8" # Ajusta según tu requires-python
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.uv]
+# default-groups = ["dev"]
+
+# ELIMINA LA SIGUIENTE SECCIÓN DUPLICADA:
+# [project.optional-dependencies]
+# dev = [
+#     "pytest",
+#     "pytest-asyncio", # Para pruebas asíncronas
+#     "httpx",          # Cliente HTTP asíncrono para pruebas de API
+#     "mypy",           # Chequeo de tipos estático
+#     "ruff",           # Linter y formateador rápido
+# ]
