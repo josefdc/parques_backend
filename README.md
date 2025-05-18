@@ -324,8 +324,6 @@ ws://127.0.0.1:8000/ws/game/{room_id}
 - `{room_id}`: Identificador único de la sala de juego (ej. `sala1`, `test-room`, etc.).
 - Cada sala es independiente: solo los clientes conectados a la misma sala reciben los mensajes entre ellos.
 
----
-
 ### ¿Cómo probarlo?
 
 #### 1. Ejecuta el servidor
@@ -338,8 +336,6 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Esto levanta el backend en `http://127.0.0.1:8000`.
 
----
-
 #### 2. Abre una herramienta de pruebas WebSocket
 
 Puedes usar cualquiera de estas herramientas:
@@ -348,8 +344,6 @@ Puedes usar cualquiera de estas herramientas:
 - Postman (opción “New > WebSocket Request”)
 - Extensión de navegador: **Simple WebSocket Client**
 - Cliente HTML personalizado (opcional)
-
----
 
 #### 3. Conéctate al WebSocket
 
@@ -360,8 +354,6 @@ ws://127.0.0.1:8000/ws/game/test-room
 ```
 
 Puedes abrir varias conexiones (pestañas o clientes) con el mismo `room_id` para simular varios jugadores.
-
----
 
 #### 4. Envía mensajes
 
@@ -377,20 +369,9 @@ Todos los clientes conectados a la misma sala recibirán un mensaje tipo:
 Mensaje en sala test-room: Hola desde el cliente A
 ```
 
----
-
 ### Comportamiento del servidor
 
 - Cada mensaje es **broadcast** a todos los clientes de la sala.
 - Cuando un cliente se **desconecta**, los demás reciben una notificación.
 - Se puede usar `send_personal_message` si deseas enviar mensajes individuales (por ejemplo, mensajes privados o turnos).
-
----
-
-### Notas adicionales
-
-- Actualmente, la lógica de salas es global y simple. Puedes extender el `ConnectionManager` para manejar lógicas por sala si lo deseas.
-- Ideal para eventos como: lanzar dados, mover fichas, esperar turno, etc.
-- Considera agregar validaciones o mensajes estructurados (usando JSON) para representar acciones del juego.
-
 
