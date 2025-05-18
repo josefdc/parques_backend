@@ -311,3 +311,86 @@ El frontend debe presentar estas opciones al usuario para que elija una, y luego
 * **Actualización del Estado:** Después de cada acción que modifica el juego (`/roll`, `/move`, `/pass-turn`, `/burn-piece`), la API devuelve el snapshot completo del juego (`GameSnapshot`) para que el frontend pueda actualizar su vista.
 * **Consistencia de IDs:** Los UUIDs de las fichas y los `SquareId` son la forma de referenciar elementos del juego.
 
+## 9. Websockets
+
+Este backend incluye soporte para comunicación en tiempo real mediante WebSockets. Esto permite reducir la latencia entre jugadores y facilitar una experiencia fluida durante la partida de Parqués.
+
+### Endpoint WebSocket
+
+```
+ws://127.0.0.1:8000/ws/game/{room_id}
+```
+
+- `{room_id}`: Identificador único de la sala de juego (ej. `sala1`, `test-room`, etc.).
+- Cada sala es independiente: solo los clientes conectados a la misma sala reciben los mensajes entre ellos.
+
+---
+
+### ¿Cómo probarlo?
+
+#### 1. Ejecuta el servidor
+
+En la raíz del proyecto, corre:
+
+```bash
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Esto levanta el backend en `http://127.0.0.1:8000`.
+
+---
+
+#### 2. Abre una herramienta de pruebas WebSocket
+
+Puedes usar cualquiera de estas herramientas:
+
+- [WebSocket King](https://websocketking.com/)
+- Postman (opción “New > WebSocket Request”)
+- Extensión de navegador: **Simple WebSocket Client**
+- Cliente HTML personalizado (opcional)
+
+---
+
+#### 3. Conéctate al WebSocket
+
+Utiliza una URL como la siguiente:
+
+```
+ws://127.0.0.1:8000/ws/game/test-room
+```
+
+Puedes abrir varias conexiones (pestañas o clientes) con el mismo `room_id` para simular varios jugadores.
+
+---
+
+#### 4. Envía mensajes
+
+Envía un texto desde el cliente WebSocket:
+
+```
+Hola desde el cliente A
+```
+
+Todos los clientes conectados a la misma sala recibirán un mensaje tipo:
+
+```
+Mensaje en sala test-room: Hola desde el cliente A
+```
+
+---
+
+### Comportamiento del servidor
+
+- Cada mensaje es **broadcast** a todos los clientes de la sala.
+- Cuando un cliente se **desconecta**, los demás reciben una notificación.
+- Se puede usar `send_personal_message` si deseas enviar mensajes individuales (por ejemplo, mensajes privados o turnos).
+
+---
+
+### Notas adicionales
+
+- Actualmente, la lógica de salas es global y simple. Puedes extender el `ConnectionManager` para manejar lógicas por sala si lo deseas.
+- Ideal para eventos como: lanzar dados, mover fichas, esperar turno, etc.
+- Considera agregar validaciones o mensajes estructurados (usando JSON) para representar acciones del juego.
+
+
