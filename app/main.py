@@ -14,6 +14,8 @@ from app.core.enums import MoveResultType
 
 from app.api.routers import game_routes
 
+from ws import game as ws_game
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
@@ -52,6 +54,12 @@ app.include_router(
     game_routes.router,
     prefix="/api/v1",
     tags=["Game Management"]
+)
+
+app.include_router(
+    ws_game.router,
+    prefix="/ws",
+    tags=["WebSockets"]
 )
 
 @app.get("/", tags=["Root"])
