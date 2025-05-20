@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv",
     "websockets",
     "pydantic_settings",
+    "httpx",
 ]
 requires-python = ">=3.8"
 
