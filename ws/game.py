@@ -29,7 +29,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                     if error_msg:
                         await manager.send_personal_message(error_msg, websocket)
                 elif action == "game_start":
-                    error_msg = await handle_start_game(payload, manager, room_id)
+                    error_msg = await handle_start_game(manager, room_id, websocket)
                     if error_msg:
                         await manager.send_personal_message(error_msg, websocket)
                 else:

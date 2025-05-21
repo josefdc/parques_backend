@@ -1,11 +1,14 @@
 # ws/actions/gameActions/start_game.py
 import httpx
 from ws.config import API_BASE_URL
+from ws.manager import ConnectionManager
+from fastapi import WebSocket
 
-async def handle_start_game(payload: dict, manager, room_id: str):
+async def handle_start_game(manager, room_id: str, websocket: WebSocket):
     try:
-        game_id = payload.get("game_id")
-        creator_user_id = payload.get("creator_user_id")
+        game_id = manager.get_game_id(room_id)
+        creator_user_id = manager.get_user_id(websocket)
+
 
         if not game_id or not creator_user_id:
             return "Faltan campos obligatorios: 'game_id' y 'creator_user_id'."

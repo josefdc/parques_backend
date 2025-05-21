@@ -1,20 +1,23 @@
+# ws/actions/gameActions/create_game.py
 import httpx
 import json
 from ws.config import API_BASE_URL
 from ws.manager import ConnectionManager
-import uuid
 from fastapi import WebSocket
 
 async def handle_create_new_game(payload: dict, manager: ConnectionManager, room_id: str, creator_socket: WebSocket):
     try:
+        creator_user_id = manager.get_user_id(creator_socket)
+        creator_color = "RED"  # ← Forzado, no se toma del payload
+
         async with httpx.AsyncClient() as client:
             # Crear juego
             response = await client.post(
                 f"{API_BASE_URL}/games",
                 json={
                     "max_players": payload.get("max_players"),
-                    "creator_user_id": payload.get("creator_user_id"),
-                    "creator_color": "RED"
+                    "creator_user_id": creator_user_id,
+                    "creator_color": creator_color
                 },
                 headers={"accept": "application/json"}
             )
@@ -22,8 +25,9 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
             if response.status_code == 201:
                 game_data = response.json()
                 game_id = game_data["id"]
-                creator_user_id = payload.get("creator_user_id")
-                creator_color = payload.get("creator_color")
+
+                # Guardar game_id para la sala
+                manager.set_game_for_room(room_id, game_id)
 
                 # Notificar creación del juego
                 await manager.broadcast(json.dumps({
@@ -32,7 +36,7 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                     "room_id": room_id
                 }), room_id)
 
-                # Confirmar al creador que fue unido como RED (u otro color)
+                # Confirmar al creador
                 await manager.send_personal_message(
                     f"Te uniste exitosamente como {creator_color}",
                     creator_socket
@@ -48,21 +52,21 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                     "room_id": room_id
                 }), room_id)
 
-                # Unir al resto de jugadores conectados a la sala
+                # Unir automáticamente al resto de conexiones en la sala
                 connections = manager.get_room_connections(room_id)
                 color_list = ["BLUE", "GREEN", "YELLOW"]
                 color_index = 0
 
                 for ws in connections:
                     if ws == creator_socket:
-                        continue  # Saltar al creador
+                        continue
 
-                    user_id = f"user_{uuid.uuid4().hex[:6]}"
-                    
-                    # Saltar el color usado por el creador
+                    user_id = manager.get_user_id(ws)
+
+                    # Saltar color ya usado
                     while color_list[color_index % len(color_list)] == creator_color:
                         color_index += 1
-                    
+
                     color = color_list[color_index % len(color_list)]
                     color_index += 1
 
@@ -89,7 +93,6 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                             ws
                         )
 
-                        # Hacer broadcast de la unión de este jugador
                         await manager.broadcast(json.dumps({
                             "event": "player_joined",
                             "data": {
@@ -98,7 +101,6 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                             },
                             "room_id": room_id
                         }), room_id)
-
             else:
                 return f"Error creando juego: {response.status_code} - {response.text}"
     except Exception as e:
