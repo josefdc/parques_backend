@@ -2,6 +2,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from .manager import ConnectionManager
 from .actions.gameActions.create_game import handle_create_new_game
+from .actions.gameActions.start_game import handle_start_game
 import json
 
 
@@ -25,6 +26,10 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
 
                 if action == "create_new_game":
                     error_msg = await handle_create_new_game(payload, manager, room_id, websocket)
+                    if error_msg:
+                        await manager.send_personal_message(error_msg, websocket)
+                elif action == "game_start":
+                    error_msg = await handle_start_game(payload, manager, room_id)
                     if error_msg:
                         await manager.send_personal_message(error_msg, websocket)
                 else:
