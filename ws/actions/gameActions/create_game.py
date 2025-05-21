@@ -8,7 +8,7 @@ from fastapi import WebSocket
 async def handle_create_new_game(payload: dict, manager: ConnectionManager, room_id: str, creator_socket: WebSocket):
     try:
         creator_user_id = manager.get_user_id(creator_socket)
-        creator_color = "RED"  # ← Forzado, no se toma del payload
+        creator_color = manager.assign_color(creator_user_id, room_id)
 
         async with httpx.AsyncClient() as client:
             # Crear juego
@@ -56,21 +56,14 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
 
                 # Unir automáticamente al resto de conexiones en la sala
                 connections = manager.get_room_connections(room_id)
-                color_list = ["BLUE", "GREEN", "YELLOW"]
-                color_index = 0
 
                 for ws in connections:
                     if ws == creator_socket:
                         continue
 
                     user_id = manager.get_user_id(ws)
-
-                    # Saltar color ya usado
-                    while color_list[color_index % len(color_list)] == creator_color:
-                        color_index += 1
-
-                    color = color_list[color_index % len(color_list)]
-                    color_index += 1
+                    
+                    color = manager.assign_color(user_id, room_id)
 
                     join_response = await client.post(
                         f"{API_BASE_URL}/games/{game_id}/join",

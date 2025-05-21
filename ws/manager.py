@@ -6,7 +6,9 @@ from fastapi import WebSocket
 class ConnectionManager:
     def __init__(self):
         self.rooms: Dict[str, List[WebSocket]] = {}            # room_id -> websockets
-        self.user_ids: Dict[WebSocket, str] = {}               # websocket -> user_id
+        self.user_ids: Dict[WebSocket, str] = {}               # websocket -> user_id  
+        self.user_colors: Dict[str, str] = {}                  # user_id -> color
+        self.room_color_index: Dict[str, int] = {}             # room_id -> color index        
         self.room_game_map: Dict[str, str] = {}                # room_id -> game_id
         self.room_creators: Dict[str, WebSocket] = {}          # room_id -> host websocket
 
@@ -39,6 +41,27 @@ class ConnectionManager:
 
     def get_user_id(self, websocket: WebSocket) -> str:
         return self.user_ids.get(websocket)
+    
+    def set_user_color(self, user_id: str, color: str):
+        self.user_colors[user_id] = color
+
+    def get_user_color(self, user_id: str) -> str:
+        return self.user_colors.get(user_id)
+    
+    def assign_color(self, user_id: str, room_id: str) -> str:
+        color_order = ["RED", "BLUE", "GREEN", "YELLOW"]
+
+        # Inicializar índice si no existe
+        if room_id not in self.room_color_index:
+            self.room_color_index[room_id] = 0
+
+        index = self.room_color_index[room_id]
+        color = color_order[index % len(color_order)]
+
+        self.user_colors[user_id] = color
+        self.room_color_index[room_id] += 1
+
+        return color
 
     def set_game_for_room(self, room_id: str, game_id: str):
         self.room_game_map[room_id] = game_id

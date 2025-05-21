@@ -576,3 +576,56 @@ Este evento permite al creador de la partia (host), iniciarla.
 #### Requisitos:
 
 - Ser el host de la partida.
+
+## WebSocket - Comenzar partida (`roll_dice`)
+
+### Descripción
+
+Este evento permite al jugador tirar los dados.
+
+
+### Acción WebSocket que el cliente debe enviar
+
+```json
+{
+  "action": "roll_dice"
+}
+```
+
+**Mensajes que manda el Websocket** 
+
+- Mensaje privado al jugador que lanzó:
+
+```json
+{
+    "event": "dice_roll_result",
+    "data": {
+        "dice1": 2,
+        "dice2": 1,
+        "is_pairs": false,
+        "roll_validation_result": "ok",
+        "possible_moves": {}
+    }
+}
+```
+
+- Broadcast a todos los jugadores con la información de lanzamiento:
+
+`Jugador {user_color} obtuvo {dice_1} y {dice_2} en su lanzamiento.`
+
+```json
+{
+    "event": "dice_rolled",
+    "data": {
+        "user_id": "user_7c0819",
+        "color": "RED",
+        "dice1": 2,
+        "dice2": 1
+    },
+    "room_id": "pene-room"
+}
+```
+
+#### Requisitos:
+
+- Ser su turno.
