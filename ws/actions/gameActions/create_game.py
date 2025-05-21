@@ -14,7 +14,7 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                 json={
                     "max_players": payload.get("max_players"),
                     "creator_user_id": payload.get("creator_user_id"),
-                    "creator_color": payload.get("creator_color")  # Ej: "RED"
+                    "creator_color": "RED"
                 },
                 headers={"accept": "application/json"}
             )

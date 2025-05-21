@@ -375,3 +375,75 @@ Mensaje en sala test-room: Hola desde el cliente A
 - Cuando un cliente se **desconecta**, los demás reciben una notificación.
 - Se puede usar `send_personal_message` si deseas enviar mensajes individuales (por ejemplo, mensajes privados o turnos).
 
+
+## WebSocket - Crear nueva partida (`create_new_game`)
+
+### Descripción
+
+Este evento permite a un jugador **crear una nueva partida multijugador**. Al crear la partida:
+
+- Se genera un nuevo juego en la base de datos.
+- El creador se une automáticamente como `RED`.
+- Se notifica a todos en la sala que el juego fue creado.
+- El resto de los jugadores conectados en la sala también se unen automáticamente y son notificados.
+
+
+### Acción WebSocket que el cliente debe enviar
+
+```json
+{
+  "action": "create_new_game",
+  "payload": {
+    "creator_user_id": "usuario123",
+    "max_players": 4
+  }
+}
+```
+
+#### Campos del `payload`
+
+| Campo              | Tipo     | Requerido | Descripción                                                  |
+|-------------------|----------|-----------|--------------------------------------------------------------|
+| `creator_user_id` | `string` | SI         | ID del jugador que está creando la partida.                 |
+| `max_players`     | `number` | SI         | Número máximo de jugadores permitidos en la partida.        |
+
+**Nota:** El color del creador se asigna automáticamente como RED en el servidor. No debe ser enviado por el cliente.
+
+**Mensajes que manda el Websocket** 
+
+- Confirmación personal para el creador:
+
+`Te uniste extiosamente como RED`
+
+- Broadcast de creación de juego:
+```
+{
+  "event": "game_created",
+  "data": {
+    "id": 42,
+    "creator_user_id": "usuario123",
+    "creator_color": "RED",
+    "max_players": 4
+  },
+  "room_id": "sala_abc"
+}
+```
+- Broadcast por cada jugador que se une:
+```
+{
+  "event": "player_joined",
+  "data": {
+    "user_id": "user_ab12cd",
+    "color": "BLUE"
+  },
+  "room_id": "sala_abc"
+}
+```
+
+#### Requisitos:
+
+- El jugador debe estar conectado por WebSocket a una sala (/game/{room_id}).
+
+- No es necesario que el creador envíe un evento "join" manualmente, ya que el servidor lo une automáticamente con el color RED.
+
+- Tampoco es necesario que ningún jugador en la sala se una al `game`, pues estos son ingresados automaticamente por el websocket y se les manda un mensaje con su respectivo color. 
