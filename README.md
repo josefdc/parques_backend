@@ -577,7 +577,7 @@ Este evento permite al creador de la partia (host), iniciarla.
 
 - Ser el host de la partida.
 
-## WebSocket - Comenzar partida (`roll_dice`)
+## WebSocket - Lanzar dados (`roll_dice`)
 
 ### Descripción
 
