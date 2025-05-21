@@ -4,15 +4,17 @@ from .manager import ConnectionManager
 from .actions.gameActions.create_game import handle_create_new_game
 import json
 
+
 router = APIRouter()
 manager = ConnectionManager()
 
+# game.py
 @router.websocket("/game/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
-    await manager.connect(websocket)
+    await manager.connect(websocket, room_id)
     try:
         await manager.send_personal_message(f"Bienvenido a la sala {room_id}", websocket)
-        await manager.broadcast(f"Un nuevo jugador se unió a la sala {room_id}")
+        await manager.broadcast(f"Un nuevo jugador se unió a la sala {room_id}", room_id)
 
         while True:
             data_text = await websocket.receive_text()
@@ -22,7 +24,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 payload = data.get("payload", {})
 
                 if action == "create_new_game":
-                    error_msg = await handle_create_new_game(payload, manager, room_id)
+                    error_msg = await handle_create_new_game(payload, manager, room_id, websocket)
                     if error_msg:
                         await manager.send_personal_message(error_msg, websocket)
                 else:
@@ -33,4 +35,4 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        await manager.broadcast(f"Un jugador salió de la sala {room_id}")
+        await manager.broadcast(f"Un jugador salió de la sala {room_id}", room_id)
