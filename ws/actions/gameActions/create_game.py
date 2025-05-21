@@ -28,6 +28,8 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
 
                 # Guardar game_id para la sala
                 manager.set_game_for_room(room_id, game_id)
+                # Guarda el host de la partida
+                manager.set_room_creator(room_id, creator_socket)
 
                 # Notificar creación del juego
                 await manager.broadcast(json.dumps({

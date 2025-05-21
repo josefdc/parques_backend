@@ -8,6 +8,7 @@ class ConnectionManager:
         self.rooms: Dict[str, List[WebSocket]] = {}            # room_id -> websockets
         self.user_ids: Dict[WebSocket, str] = {}               # websocket -> user_id
         self.room_game_map: Dict[str, str] = {}                # room_id -> game_id
+        self.room_creators: Dict[str, WebSocket] = {}          # room_id -> host websocket
 
     async def connect(self, websocket: WebSocket, room_id: str):
         await websocket.accept()
@@ -44,3 +45,9 @@ class ConnectionManager:
 
     def get_game_id(self, room_id: str) -> str:
         return self.room_game_map.get(room_id)
+    
+    def set_room_creator(self, room_id: str, websocket: WebSocket):
+        self.room_creators[room_id] = websocket
+
+    def is_creator(self, room_id: str, websocket: WebSocket) -> bool:
+        return self.room_creators.get(room_id) == websocket

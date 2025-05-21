@@ -394,18 +394,14 @@ Este evento permite a un jugador **crear una nueva partida multijugador**. Al cr
 {
   "action": "create_new_game",
   "payload": {
-    "creator_user_id": "usuario123",
     "max_players": 4
   }
 }
 ```
 
-#### Campos del `payload`
+#### Campo del `payload`|
 
-| Campo              | Tipo     | Requerido | Descripción                                                  |
-|-------------------|----------|-----------|--------------------------------------------------------------|
-| `creator_user_id` | `string` | SI         | ID del jugador que está creando la partida.                 |
-| `max_players`     | `number` | SI         | Número máximo de jugadores permitidos en la partida.        |
+`max_players` es un número que indica cuántos jugadores como máximo pueden participar en la partida. Es obligatorio.
 
 **Nota:** El color del creador se asigna automáticamente como RED en el servidor. No debe ser enviado por el cliente.
 
@@ -447,3 +443,136 @@ Este evento permite a un jugador **crear una nueva partida multijugador**. Al cr
 - No es necesario que el creador envíe un evento "join" manualmente, ya que el servidor lo une automáticamente con el color RED.
 
 - Tampoco es necesario que ningún jugador en la sala se una al `game`, pues estos son ingresados automaticamente por el websocket y se les manda un mensaje con su respectivo color. 
+
+- Si el jugador no está conectado a la sala al momento de creación de está, no podrá unirse después
+
+## WebSocket - Comenzar partida (`game_start`)
+
+### Descripción
+
+Este evento permite al creador de la partia (host), iniciarla.
+
+
+### Acción WebSocket que el cliente debe enviar
+
+```json
+{
+  "action": "game_start"
+}
+```
+
+**Mensajes que manda el Websocket** 
+
+
+
+- Broadcast de inicio de juego:
+
+`La partida {game_id} ha comenzado`
+
+
+
+```json
+
+{
+    "id": "2a736cdb-b233-4ab3-a487-3e8ec5ba4e05",
+    "state": "in_progress",
+    "max_players": 4,
+    "current_player_count": 2,
+    "players": [
+        {
+            "user_id": "user_d5e143",
+            "color": "RED",
+            "pieces": [
+                {
+                    "id": "830299ed-7357-4640-96c1-a469be515cdc",
+                    "piece_player_id": 0,
+                    "color": "RED",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                },
+                {
+                    "id": "1f928729-1742-4467-aa60-771ba5b7cc6e",
+                    "piece_player_id": 1,
+                    "color": "RED",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                },
+                {
+                    "id": "8b5ecd3c-9d11-4864-abc7-70c93c752828",
+                    "piece_player_id": 2,
+                    "color": "RED",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                },
+                {
+                    "id": "0a833057-0a52-426b-a5fd-167126ce815c",
+                    "piece_player_id": 3,
+                    "color": "RED",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                }
+            ],
+            "is_current_turn": true,
+            "consecutive_pairs_count": 0
+        },
+        {
+            "user_id": "user_227bb7",
+            "color": "BLUE",
+            "pieces": [
+                {
+                    "id": "7c34689e-725d-4491-9a05-4299506b138c",
+                    "piece_player_id": 0,
+                    "color": "BLUE",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                },
+                {
+                    "id": "8c569358-efcd-47d5-8741-ed1a5bcf8f31",
+                    "piece_player_id": 1,
+                    "color": "BLUE",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                },
+                {
+                    "id": "4d738584-30a3-4921-9d15-3587386658cd",
+                    "piece_player_id": 2,
+                    "color": "BLUE",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                },
+                {
+                    "id": "27a1dce0-7779-456d-88c8-40d0e42efafe",
+                    "piece_player_id": 3,
+                    "color": "BLUE",
+                    "position": null,
+                    "is_in_jail": true,
+                    "has_reached_cielo": false,
+                    "squares_advanced_in_path": 0
+                }
+            ],
+            "is_current_turn": false,
+            "consecutive_pairs_count": 0
+        }
+    ],
+    "created_at": "2025-05-21T11:28:08.459136"
+}
+
+```
+
+#### Requisitos:
+
+- Ser el host de la partida.
