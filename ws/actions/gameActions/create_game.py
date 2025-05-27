@@ -41,7 +41,7 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                 # Confirmar al creador
                 await manager.send_personal_message(
                     json.dumps({
-                        "event": "player_joined",
+                        "event": "you_joined",
                         "data": {
                             "message": f"Te uniste exitosamente como {creator_color}",
                             "color": creator_color,
