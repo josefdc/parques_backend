@@ -5,6 +5,7 @@ incluyendo métodos útiles para verificar pares.
 """
 import random
 from typing import Tuple
+from app.core.config import settings
 
 class Dice:
     """
@@ -19,8 +20,12 @@ class Dice:
         Returns:
             Tupla con los resultados de los dos dados.
         """
-        d1 = random.randint(1, 6)
-        d2 = random.randint(1, 6)
+        if settings.ENVIRONMENT == "development":
+            d1 = 1
+            d2 = 1
+        else:
+            d1 = random.randint(1, 6)
+            d2 = random.randint(1, 6)
         return d1, d2
 
     @staticmethod

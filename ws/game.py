@@ -4,6 +4,7 @@ from .manager import ConnectionManager
 from .actions.gameActions.create_game import handle_create_new_game
 from .actions.gameActions.start_game import handle_start_game
 from .actions.playerActions.roll_dice import handle_roll_dice
+from .actions.playerActions.move_piece import handle_move_piece
 import json
 
 
@@ -35,6 +36,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                         await manager.send_personal_message(error_msg, websocket)
                 elif action == "roll_dice":
                     await handle_roll_dice(manager, room_id, websocket)
+                elif action == "move_piece":
+                    await handle_move_piece(manager, payload, room_id, websocket)
                 else:
                     await manager.send_personal_message("Acción no reconocida", websocket)
 
