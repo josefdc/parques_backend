@@ -1,10 +1,11 @@
 # ws/actions/gameActions/start_game.py
 import httpx
+import json
 from ws.config import API_BASE_URL
 from ws.manager import ConnectionManager
 from fastapi import WebSocket
 
-async def handle_start_game(manager, room_id: str, caller_socket: WebSocket):
+async def handle_start_game(manager: ConnectionManager, room_id: str, caller_socket: WebSocket):
     try:
         if not manager.is_creator(room_id, caller_socket):
             return "Solo el creador de la partida puede iniciarla."
@@ -26,11 +27,14 @@ async def handle_start_game(manager, room_id: str, caller_socket: WebSocket):
             )
 
         if response.status_code == 200:
-            await manager.broadcast(f"La partida {game_id} ha comenzado.", room_id)
-            await manager.broadcast(
-                response.text,
-                room_id
-            )
+            game_data = response.json()
+
+            await manager.broadcast(json.dumps({
+                "event": "game_started",
+                "data": game_data,
+                "room_id": room_id
+            }), room_id)
+
         else:
             return f"Error al iniciar el juego: {response.status_code} - {response.text}"
 
