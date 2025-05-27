@@ -146,8 +146,8 @@ class GameService:
             raise GameServiceError(f"Tipo de color inesperado: {type(requested_color)}")
 
         async with game.lock: # Asegurar atomicidad al modificar la partida
-            if game.state != GameState.WAITING_PLAYERS:
-                raise GameServiceError("La partida no está esperando jugadores.")
+            if game.state not in [GameState.WAITING_PLAYERS, GameState.READY_TO_START]:
+                raise GameServiceError("La partida no está esperando jugadores o ya ha comenzado.")
             if len(game.players) >= game.max_players:
                 raise GameServiceError("La partida ya está llena.")
             if actual_requested_color_enum in game.players:
