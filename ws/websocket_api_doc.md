@@ -37,7 +37,7 @@ Lanza los dados.
 
 ```json
 {
-  "event": "roll_dice"
+  "action": "roll_dice"
 }
 ```
 
@@ -46,11 +46,23 @@ Mueve una ficha luego de lanzar los dados.
 
 ```json
 {
-  "event": "move_piece",
-  "data": {
+  "action": "move_piece",
+  "payload": {
     "piece_uuid": "<UUID_DE_LA_FICHA>",
     "target_square_id": "<ID_DE_LA_CASILLA_DESTINO>",
     "steps_used": "<NUMERO_DE_PASOS_UTILIZADOS>"
+  }
+}
+```
+
+### 4. `burn_piece`
+Quemar ficha después de tres pares seguidos
+
+```json
+{
+  "action": "burn_piece",
+  "payload": {
+    "piece_uuid": "<UUID_DE_LA_FICHA>"
   }
 }
 ```

@@ -49,7 +49,7 @@ class ConnectionManager:
         return self.user_colors.get(user_id)
     
     def assign_color(self, user_id: str, room_id: str) -> str:
-        color_order = ["RED", "BLUE", "GREEN", "YELLOW"]
+        color_order = ["RED", "YELLOW", "BLUE", "GREEN"]
 
         # Inicializar índice si no existe
         if room_id not in self.room_color_index:
