@@ -33,12 +33,6 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
                 socket
             )
 
-            # Broadcast del mensaje de texto
-            await manager.broadcast(
-                f"El Jugador {color} obtuvo {dice1} y {dice2} en su lanzamiento.",
-                room_id
-            )
-
             # Broadcast del mensaje con JSON
             await manager.broadcast(
                 json.dumps({
