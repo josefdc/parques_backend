@@ -90,11 +90,21 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                                 ws
                             )
                         else:
+                            # Confirmación privada al jugador que se unió
                             await manager.send_personal_message(
-                                f"Te uniste exitosamente como {color}",
+                                json.dumps({
+                                    "event": "you_joined",
+                                    "data": {
+                                        "message": f"Te uniste exitosamente como {color}",
+                                        "color": color,
+                                        "user_id": user_id
+                                    },
+                                    "room_id": room_id
+                                }),
                                 ws
                             )
 
+                            # Notificación global de nuevo jugador
                             await manager.broadcast(json.dumps({
                                 "event": "player_joined",
                                 "data": {
