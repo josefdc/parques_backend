@@ -95,7 +95,7 @@ class GameAggregate:
             pass
         if player.color in self.players:
             return False
-        if self.state != GameState.WAITING_PLAYERS:
+        if self.state not in [GameState.WAITING_PLAYERS, GameState.READY_TO_START]:
             return False
 
         self.players[player.color] = player
