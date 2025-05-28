@@ -51,8 +51,8 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
         else:
             await manager.send_personal_message(
                 json.dumps({
-                    "action": "error",
-                    "payload": {
+                    "event": "error",
+                    "data": {
                         "message": f"Error al lanzar los dados: {response.status_code} - {response.text}"
                     }
                 }),
@@ -62,8 +62,8 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
     except Exception as e:
         await manager.send_personal_message(
             json.dumps({
-                "action": "error",
-                "payload": {
+                "event": "error",
+                "data": {
                     "message": f"Excepción en roll_dice: {str(e)}"
                 }
             }),

@@ -17,8 +17,8 @@ async def handle_burn_piece(manager: ConnectionManager, payload: dict, room_id: 
         if not piece_uuid:
             await manager.send_personal_message(
                 json.dumps({
-                    "action": "error",
-                    "payload": {
+                    "event": "error",
+                    "data": {
                         "message": "Falta el piece_uuid"
                     }
                 }),
@@ -55,8 +55,8 @@ async def handle_burn_piece(manager: ConnectionManager, payload: dict, room_id: 
         else:
             await manager.send_personal_message(
                 json.dumps({
-                    "action": "error",
-                    "payload": {
+                    "event": "error",
+                    "data": {
                         "message": f"Error al quemar la pieza: {response.status_code} - {response.text}"
                     }
                 }),
@@ -66,8 +66,8 @@ async def handle_burn_piece(manager: ConnectionManager, payload: dict, room_id: 
     except Exception as e:
         await manager.send_personal_message(
             json.dumps({
-                "action": "error",
-                "payload": {
+                "event": "error",
+                "data": {
                     "message": f"Excepción en burn_piece: {str(e)}"
                 }
             }),

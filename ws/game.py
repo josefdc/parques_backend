@@ -28,8 +28,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                     if error_msg:
                         await manager.send_personal_message(
                             json.dumps({
-                                "action": "error",
-                                "payload": {
+                                "event": "error",
+                                "data": {
                                     "message": error_msg
                                 }
                             }),
@@ -41,8 +41,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                     if error_msg:
                         await manager.send_personal_message(
                             json.dumps({
-                                "action": "error",
-                                "payload": {
+                                "event": "error",
+                                "data": {
                                     "message": error_msg
                                 }
                             }),
@@ -61,8 +61,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 else:
                     await manager.send_personal_message(
                         json.dumps({
-                            "action": "error",
-                            "payload": {
+                            "event": "error",
+                            "data": {
                                 "message": "Acción no reconocida"
                             }
                         }),
@@ -72,8 +72,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
             except Exception as e:
                 await manager.send_personal_message(
                     json.dumps({
-                        "action": "error",
-                        "payload": {
+                        "event": "error",
+                        "data": {
                             "message": f"Error: {str(e)}"
                         }
                     }),
