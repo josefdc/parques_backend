@@ -218,12 +218,14 @@ class DiceRollResponse(TunedModel):
         is_pairs: Indica si fue un par.
         roll_validation_result: Resultado de la validación del tiro.
         possible_moves: Diccionario de movimientos posibles por ficha.
+        current_turn_color: Color del jugador que tiene el turno después del lanzamiento.
     """
     dice1: int
     dice2: int
     is_pairs: bool
     roll_validation_result: MoveResultType
     possible_moves: Dict[str, List[Tuple[Union[int, Tuple[str, Optional[Color], Optional[int]]], MoveResultType, int]]]
+    current_turn_color: Optional[Color]
 
 class MoveOutcome(TunedModel):
     """

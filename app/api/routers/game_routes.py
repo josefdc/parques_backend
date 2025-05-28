@@ -245,19 +245,20 @@ async def roll_dice_endpoint(
         HTTPException: 400 si falta el encabezado X-User-ID.
 
     Returns:
-        Resultado del lanzamiento de dados.
+        Resultado del lanzamiento de dados incluyendo el color del turno actual.
     """
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="X-User-ID header es requerido.")
 
-    _game, dice_rolled, roll_val_result, possible_mvs = await service.roll_dice(game_id, user_id)
+    updated_game, dice_rolled, roll_val_result, possible_mvs = await service.roll_dice(game_id, user_id)
 
     return schemas.DiceRollResponse(
         dice1=dice_rolled[0],
         dice2=dice_rolled[1],
         is_pairs=(dice_rolled[0] == dice_rolled[1]),
         roll_validation_result=roll_val_result,
-        possible_moves=possible_mvs
+        possible_moves=possible_mvs,
+        current_turn_color=updated_game.current_turn_color
     )
 
 @router.post(
