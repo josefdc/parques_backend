@@ -27,6 +27,7 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                 game_data = response.json()
                 game_id = game_data["id"]
 
+                # Guardar game_id para la sala
                 manager.set_game_for_room(room_id, game_id)
                 manager.set_room_creator(room_id, creator_socket)
 
@@ -51,7 +52,6 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                     creator_socket
                 )
 
-                # Notificar a todos que un jugador se unió
                 await manager.broadcast(json.dumps({
                     "action": "player_joined",
                     "payload": {
@@ -61,6 +61,7 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                     "room_id": room_id
                 }), room_id)
 
+                # Unir automáticamente al resto de conexiones en la sala
                 connections = manager.get_room_connections(room_id)
 
                 for ws in connections:
@@ -94,6 +95,7 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                                 ws
                             )
                         else:
+                            # Confirmación privada al jugador que se unió
                             await manager.send_personal_message(
                                 json.dumps({
                                     "action": "you_joined",
@@ -107,6 +109,7 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                                 ws
                             )
 
+                            # Notificación global de nuevo jugador
                             await manager.broadcast(json.dumps({
                                 "action": "player_joined",
                                 "payload": {
@@ -126,18 +129,18 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                             ws
                         )
             else:
-                return json.dumps({
-                    "action": "error",
-                    "payload": {
+                return {
+                    "event": "error",
+                    "data": {
                         "message": f"Error creando juego: {response.status_code} - {response.text}"
                     }
-                })
+                }
     except Exception as e:
-        return json.dumps({
-            "action": "error",
-            "payload": {
+        return {
+            "event": "error",
+            "data": {
                 "message": f"Excepción en create_new_game: {str(e)}"
             }
-        })
+        }
 
     return None
