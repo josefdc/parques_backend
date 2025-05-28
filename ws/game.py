@@ -17,8 +17,8 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
     await manager.connect(websocket, room_id)
     try:
-        await manager.send_personal_message(f"Bienvenido a la sala {room_id}", websocket)
-        await manager.broadcast(f"Un nuevo jugador se unió a la sala {room_id}", room_id)
+        #await manager.send_personal_message(f"Bienvenido a la sala {room_id}", websocket)
+        #await manager.broadcast(f"Un nuevo jugador se unió a la sala {room_id}", room_id)
 
         while True:
             data_text = await websocket.receive_text()
