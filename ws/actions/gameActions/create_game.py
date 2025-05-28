@@ -33,16 +33,16 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
 
                 # Notificar a todos que se creó el juego
                 await manager.broadcast(json.dumps({
-                    "action": "game_created",
-                    "payload": game_data,
+                    "event": "game_created",
+                    "data": game_data,
                     "room_id": room_id
                 }), room_id)
 
                 # Confirmar al creador
                 await manager.send_personal_message(
                     json.dumps({
-                        "action": "you_joined",
-                        "payload": {
+                        "event": "you_joined",
+                        "data": {
                             "message": f"Te uniste exitosamente como {creator_color}",
                             "color": creator_color,
                             "user_id": creator_user_id
@@ -53,8 +53,8 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                 )
 
                 await manager.broadcast(json.dumps({
-                    "action": "player_joined",
-                    "payload": {
+                    "event": "player_joined",
+                    "data": {
                         "user_id": creator_user_id,
                         "color": creator_color
                     },
@@ -87,8 +87,8 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                         if join_response.status_code != 200:
                             await manager.send_personal_message(
                                 json.dumps({
-                                    "action": "error",
-                                    "payload": {
+                                    "event": "error",
+                                    "data": {
                                         "message": f"Error al unir usuario {user_id}: {join_response.status_code} - {join_response.text}"
                                     }
                                 }),
@@ -98,8 +98,8 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                             # Confirmación privada al jugador que se unió
                             await manager.send_personal_message(
                                 json.dumps({
-                                    "action": "you_joined",
-                                    "payload": {
+                                    "event": "you_joined",
+                                    "data": {
                                         "message": f"Te uniste exitosamente como {color}",
                                         "color": color,
                                         "user_id": user_id
@@ -111,8 +111,8 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
 
                             # Notificación global de nuevo jugador
                             await manager.broadcast(json.dumps({
-                                "action": "player_joined",
-                                "payload": {
+                                "event": "player_joined",
+                                "data": {
                                     "user_id": user_id,
                                     "color": color
                                 },
@@ -121,8 +121,8 @@ async def handle_create_new_game(payload: dict, manager: ConnectionManager, room
                     except Exception as e:
                         await manager.send_personal_message(
                             json.dumps({
-                                "action": "error",
-                                "payload": {
+                                "event": "error",
+                                "data": {
                                     "message": f"Error inesperado al unir al juego: {str(e)}"
                                 }
                             }),

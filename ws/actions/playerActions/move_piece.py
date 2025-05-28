@@ -17,8 +17,8 @@ async def handle_move_piece(manager: ConnectionManager, payload: dict, room_id: 
         if not all([piece_uuid, target_square_id is not None, steps_used is not None]):
             await manager.send_personal_message(
                 json.dumps({
-                    "action": "error",
-                    "payload": {
+                    "event": "error",
+                    "data": {
                         "message": "Faltan datos en el movimiento."
                     }
                 }),
@@ -60,8 +60,8 @@ async def handle_move_piece(manager: ConnectionManager, payload: dict, room_id: 
         else:
             await manager.send_personal_message(
                 json.dumps({
-                    "action": "error",
-                    "payload": {
+                    "event": "error",
+                    "data": {
                         "message": f"Error al mover la pieza: {response.status_code} - {response.text}"
                     }
                 }),
@@ -71,8 +71,8 @@ async def handle_move_piece(manager: ConnectionManager, payload: dict, room_id: 
     except Exception as e:
         await manager.send_personal_message(
             json.dumps({
-                "action": "error",
-                "payload": {
+                "event": "error",
+                "data": {
                     "message": f"Excepción en move_piece: {str(e)}"
                 }
             }),

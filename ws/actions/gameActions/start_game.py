@@ -41,8 +41,8 @@ async def handle_start_game(manager: ConnectionManager, room_id: str, caller_soc
             game_data = response.json()
 
             await manager.broadcast(json.dumps({
-                "action": "game_started",
-                "payload": game_data,
+                "event": "game_started",
+                "data": game_data,
                 "room_id": room_id
             }), room_id)
         else:
