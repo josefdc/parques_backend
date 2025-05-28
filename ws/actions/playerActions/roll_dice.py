@@ -24,7 +24,7 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
             dice2 = roll_data.get("dice2")
             color = manager.get_user_color(user_id)
 
-            # Mensaje privado con la respuesta literal de la API
+            # Enviar resultado privado al usuario (respuesta directa)
             await manager.send_personal_message(
                 json.dumps({
                     "event": "dice_roll_result",
@@ -33,7 +33,7 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
                 socket
             )
 
-            # Broadcast del mensaje con JSON
+            # Broadcast del evento a la sala (respuesta directa)
             await manager.broadcast(
                 json.dumps({
                     "event": "dice_rolled",
@@ -50,12 +50,22 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
 
         else:
             await manager.send_personal_message(
-                f"Error al lanzar los dados: {response.status_code} - {response.text}",
+                json.dumps({
+                    "action": "error",
+                    "payload": {
+                        "message": f"Error al lanzar los dados: {response.status_code} - {response.text}"
+                    }
+                }),
                 socket
             )
 
     except Exception as e:
         await manager.send_personal_message(
-            f"Excepción en roll_dice: {str(e)}",
+            json.dumps({
+                "action": "error",
+                "payload": {
+                    "message": f"Excepción en roll_dice: {str(e)}"
+                }
+            }),
             socket
         )
