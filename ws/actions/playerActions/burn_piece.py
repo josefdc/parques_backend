@@ -1,8 +1,10 @@
+# ws/actions/gameActions/burn_piece.py
 import httpx
 import json
 from fastapi import WebSocket
 from ws.config import API_BASE_URL
 from ws.manager import ConnectionManager
+
 
 async def handle_burn_piece(manager: ConnectionManager, payload: dict, room_id: str, socket: WebSocket):
     try:
@@ -13,7 +15,15 @@ async def handle_burn_piece(manager: ConnectionManager, payload: dict, room_id: 
         piece_uuid = payload.get("piece_uuid")
 
         if not piece_uuid:
-            await manager.send_personal_message("Falta el piece_uuid", socket)
+            await manager.send_personal_message(
+                json.dumps({
+                    "action": "error",
+                    "payload": {
+                        "message": "Falta el piece_uuid"
+                    }
+                }),
+                socket
+            )
             return
 
         async with httpx.AsyncClient() as client:
@@ -32,23 +42,34 @@ async def handle_burn_piece(manager: ConnectionManager, payload: dict, room_id: 
         if response.status_code == 200:
             move_data = response.json()
             color = manager.get_user_color(user_id)
-            
+
             await manager.broadcast(
                 json.dumps({
-                    "event": "piece_burn_result",
-                    "data": move_data
+                    "event": "piece_burn_result",  # respuesta, así que está bien usar "event"
+                    "data": move_data,
+                    "room_id": room_id
                 }),
                 room_id
             )
 
         else:
             await manager.send_personal_message(
-                f"Error al quemar la pieza: {response.status_code} - {response.text}",
+                json.dumps({
+                    "action": "error",
+                    "payload": {
+                        "message": f"Error al quemar la pieza: {response.status_code} - {response.text}"
+                    }
+                }),
                 socket
             )
 
     except Exception as e:
         await manager.send_personal_message(
-            f"Excepción en burn_piece: {str(e)}",
+            json.dumps({
+                "action": "error",
+                "payload": {
+                    "message": f"Excepción en burn_piece: {str(e)}"
+                }
+            }),
             socket
         )
