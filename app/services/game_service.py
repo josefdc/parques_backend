@@ -246,6 +246,12 @@ class GameService:
             if game.current_turn_color != player_color:
                 raise NotPlayerTurnError(user_id, game_id)
             
+            # Si dice_roll_count es 0, significa que es el inicio de un nuevo "segmento" de lanzamientos
+            # (ya sea el primer tiro del turno, o un tiro extra por pares).
+            # En este caso, reseteamos los movimientos hechos con los dados de este rollo.
+            if game.dice_roll_count == 0:
+                game.moves_made_this_roll = 0
+
             # Determinar si el jugador está atrapado en la cárcel
             is_stuck_in_jail = player_object.get_jailed_pieces_count() == PIECES_PER_PLAYER
             
@@ -304,6 +310,7 @@ class GameService:
                         # REGLA: Si se saca de cárcel con pares, se vuelve a tirar.
                         # Reseteamos dice_roll_count para permitir otro tiro en este turno.
                         game.dice_roll_count = 0 
+                        game.moves_made_this_roll = 0  # RESETEAR porque es un "nuevo" set de acciones post-salida
                         game._add_game_event("player_rolls_again_after_massive_jail_exit", {"player": player_color.name})
 
             # --- AUTOMATIC TURN PASS FOR 3 FAILED ATTEMPTS ---
@@ -480,27 +487,50 @@ class GameService:
             else: # Should not happen if validation is correct
                 raise GameServiceError(f"Resultado de movimiento no manejado después de la validación: {move_result_type.name}", move_result_type)
 
-            # --- Refined end-of-turn logic ---
+            # --- NUEVA LÓGICA DE FIN DE TURNO ---
+            # Incrementar el contador de movimientos hechos para este tiro, solo si no fue par
+            # (los pares se manejan con game.dice_roll_count = 0 para repetir tiro)
+            if not is_roll_pairs:
+                game.moves_made_this_roll += 1
+
             game_ended_by_win = (game.state == GameState.FINISHED)
+            player_continues_turn = False
 
             if not game_ended_by_win:
-                player_continues_turn = False
+                if is_roll_pairs:
+                    # Para pares: mantener la lógica existente
+                    if move_result_type == MoveResultType.JAIL_EXIT_SUCCESS and is_roll_pairs:
+                        # Salió de cárcel con pares -> Vuelve a tirar.
+                        game.dice_roll_count = 0 # Permite nuevo tiro
+                        game.moves_made_this_roll = 0  # Resetear para el nuevo tiro
+                        player_continues_turn = True
+                        game._add_game_event("player_rolls_again_after_jail_exit", {"player": current_player.color.name})
+                    
+                    elif current_player.consecutive_pairs_count < 3 and move_result_type != MoveResultType.JAIL_EXIT_SUCCESS:
+                        # Sacó pares (1ro o 2do) y no fue salida de cárcel -> Repite turno.
+                        game.dice_roll_count = 0 # Permite nuevo tiro
+                        game.moves_made_this_roll = 0  # Resetear para el nuevo tiro
+                        player_continues_turn = True
+                        game._add_game_event("player_repeats_turn_for_pairs", {"player": current_player.color.name})
 
-                if move_result_type == MoveResultType.JAIL_EXIT_SUCCESS and is_roll_pairs:
-                    # Salió de cárcel con pares -> Vuelve a tirar.
-                    # player.consecutive_pairs_count NO se resetea (handled by validate_and_process_roll).
-                    # game.current_player_doubles_count NO se resetea (handled by validate_and_process_roll).
-                    game.dice_roll_count = 0 # Permite nuevo tiro
-                    player_continues_turn = True
-                    game._add_game_event("player_rolls_again_after_jail_exit", {"player": current_player.color.name})
-                
-                elif is_roll_pairs and current_player.consecutive_pairs_count < 3 and move_result_type != MoveResultType.JAIL_EXIT_SUCCESS:
-                    # Sacó pares (1ro o 2do) y no fue salida de cárcel (ya manejado arriba) -> Repite turno.
-                    # player.consecutive_pairs_count NO se resetea.
-                    # game.current_player_doubles_count NO se resetea.
-                    game.dice_roll_count = 0 # Permite nuevo tiro
-                    player_continues_turn = True
-                    game._add_game_event("player_repeats_turn_for_pairs", {"player": current_player.color.name})
+                else: # NO FUE PAR - NUEVA LÓGICA
+                    d1_orig, d2_orig = game.last_dice_roll
+                    
+                    # Si el jugador usó la suma de los dados, ya no le quedan movimientos
+                    if steps_taken_for_move == (d1_orig + d2_orig):
+                        # Se considera que usó "ambos" dados con este movimiento
+                        game.moves_made_this_roll = 2  # Forzar a 2 para que el turno termine
+                    
+                    if game.moves_made_this_roll < 2:
+                        # Aún le queda un "uso" de dado si no usó la suma.
+                        # El jugador debe poder usar el otro dado.
+                        player_continues_turn = True
+                        game._add_game_event("player_may_use_second_die", {
+                            "player": current_player.color.name, 
+                            "roll": game.last_dice_roll, 
+                            "moves_made": game.moves_made_this_roll
+                        })
+                    # Si game.moves_made_this_roll es 2 (o usó la suma), el turno terminará.
 
                 if not player_continues_turn:
                     # El turno pasa al siguiente jugador.

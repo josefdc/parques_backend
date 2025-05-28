@@ -34,6 +34,7 @@ class GameAggregate:
     dice_roll_count: int
     last_dice_roll: Optional[Tuple[int, int]]
     current_player_doubles_count: int
+    moves_made_this_roll: int  # NUEVO ATRIBUTO
     max_players: int
     lock: asyncio.Lock
     log: List['GameEventPydantic']
@@ -59,6 +60,7 @@ class GameAggregate:
         self.dice_roll_count = 0
         self.last_dice_roll = None
         self.current_player_doubles_count = 0
+        self.moves_made_this_roll = 0  # INICIALIZAR
         self.max_players = max_players_limit
         self.lock = asyncio.Lock()
         self.log = []
@@ -171,6 +173,7 @@ class GameAggregate:
         self.current_player_doubles_count = 0
         self.last_dice_roll = None
         self.dice_roll_count = 0
+        self.moves_made_this_roll = 0  # RESETEAR EN NEXT_TURN
 
         if self.current_turn_color and self.players[self.current_turn_color]:
             self.players[self.current_turn_color].reset_consecutive_pairs()
