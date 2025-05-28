@@ -28,7 +28,8 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
             await manager.send_personal_message(
                 json.dumps({
                     "event": "dice_roll_result",
-                    "data": roll_data
+                    "data": roll_data,
+                    "color": color
                 }),
                 socket
             )
