@@ -191,10 +191,11 @@ class MoveValidator:
                 return MoveResultType.INVALID_PIECE, None
 
             print(f"DEBUG _validate_single_move_attempt: Salida square occupants: {len(salida_square.occupants)}") # DESCOMENTAR
-            if len(salida_square.occupants) == 2 and \
-               all(occ.color == piece_to_move.color for occ in salida_square.occupants):
-                print("DEBUG _validate_single_move_attempt: Failing jail exit: salida_square occupied by own barrier.") # DESCOMENTAR
+            
+            if len(salida_square.occupants) >= 2:
+                print("DEBUG _validate_single_move_attempt: Failing jail exit: salida_square already has 2 occupants.") # DESCOMENTAR
                 return MoveResultType.JAIL_EXIT_FAIL_OCCUPIED_START, None
+
             
             print(f"DEBUG _validate_single_move_attempt: Jail exit SUCCESS for piece {piece_to_move.id}.") # DESCOMENTAR
             return MoveResultType.JAIL_EXIT_SUCCESS, salida_square_id

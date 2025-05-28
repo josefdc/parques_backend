@@ -214,7 +214,8 @@ class GameService:
         user_id: str
     ) -> Tuple[GameAggregate, Tuple[int, int], MoveResultType, Dict[str, List[Tuple['SquareId', MoveResultType, int]]]]:
         """
-        Maneja el lanzamiento de dados de un jugador, valida el resultado y calcula movimientos posibles.
+        Maneja el lanzamiento de dados de un jugador, valida el resultado,
+        realiza una salida automática de cárcel si aplica, y calcula movimientos posibles.
 
         Args:
             game_id: UUID de la partida.
@@ -228,8 +229,8 @@ class GameService:
             Tupla con:
                 - GameAggregate actualizado.
                 - Lanzamiento de dados (d1, d2).
-                - MoveResultType del tiro.
-                - Diccionario de movimientos posibles.
+                - MoveResultType del tiro (ej: OK, THREE_PAIRS_BURN).
+                - Diccionario de movimientos posibles después de cualquier acción automática.
         """
         game = await self._repository.get_by_id(game_id)
         if not game:
@@ -257,11 +258,60 @@ class GameService:
             roll_validation_result = self._validator.validate_and_process_roll(game, player_color, d1, d2)
 
             possible_moves = {}
-            if roll_validation_result != MoveResultType.THREE_PAIRS_BURN:
-                possible_moves = self._validator.get_possible_moves(game, player_color, d1, d2)
-                # Log if no moves are possible and it's not a three-pairs burn scenario
-                # and player has pieces not in jail (meaning they are not forced to pass due to all pieces jailed)
-                if not possible_moves and player_object.get_jailed_pieces_count() < PIECES_PER_PLAYER:
+            if roll_validation_result == MoveResultType.THREE_PAIRS_BURN:
+                # No hay salida automática ni movimientos si son tres pares.
+                # El servicio handle_three_pairs_penalty se llamará después.
+                await self._repository.save(game)
+                return game, (d1, d2), roll_validation_result, {}
+            is_pairs = (d1 == d2)
+            piece_exited_jail_automatically = False
+
+            if is_pairs and player_object.get_jailed_pieces_count() > 0:
+                jailed_pieces = player_object.get_jailed_pieces() # Obtener fichas en cárcel
+                
+                if jailed_pieces:
+                    # Intentar sacar la primera ficha de la cárcel encontrada
+                    piece_to_auto_exit = jailed_pieces[0] 
+
+                    # Validar si la ficha puede salir (casilla de salida no llena)
+                    # Se usa _validate_single_move_attempt con steps=0 para la lógica de salida de cárcel
+                    exit_check_result_type, exit_target_square_id = self._validator._validate_single_move_attempt(
+                        game=game,
+                        piece_to_move=piece_to_auto_exit,
+                        steps=0,  # Indica intento de salida de cárcel
+                        is_roll_pairs=True # Sabemos que es un par
+                    )
+
+                    if exit_check_result_type == MoveResultType.JAIL_EXIT_SUCCESS and exit_target_square_id is not None:
+                        # Sí puede salir, realizar el movimiento automáticamente
+                        salida_square = game.board.get_square(exit_target_square_id)
+                        if salida_square: # Debería existir si JAIL_EXIT_SUCCESS
+                            # La ficha estaba en cárcel (position = None)
+                            piece_to_auto_exit.is_in_jail = False # Actualizar estado de la ficha
+                            piece_to_auto_exit.move_to(exit_target_square_id) # Actualizar posición de la ficha
+                            salida_square.add_piece(piece_to_auto_exit) # Añadir al nuevo square
+                            
+                            game._add_game_event("automatic_jail_exit", {
+                                "player": player_color.name, 
+                                "piece_id": str(piece_to_auto_exit.id), 
+                                "target_square": exit_target_square_id
+                            })
+                            piece_exited_jail_automatically = True
+
+                            # REGLA: Si se sale de cárcel con pares, se vuelve a tirar.
+                            # Reseteamos dice_roll_count para permitir otro tiro en este turno.
+                            # player_object.consecutive_pairs_count ya está incrementado por validate_and_process_roll.
+                            game.dice_roll_count = 0 
+                            game._add_game_event("player_rolls_again_after_auto_jail_exit", {"player": player_color.name})
+
+            # Calcular movimientos posibles DESPUÉS de la posible salida automática
+            possible_moves = self._validator.get_possible_moves(game, player_color, d1, d2)
+            
+            # Log si no hay movimientos posibles (y no fue salida automática que permita nuevo tiro)
+            if not possible_moves and not (piece_exited_jail_automatically and game.dice_roll_count == 0):
+                # Solo se considera "sin movimientos válidos" si no se activó la regla de volver a tirar.
+                # Y si el jugador tiene fichas fuera de la cárcel (no está obligado a pasar por tener todo en cárcel sin pares)
+                if player_object.get_jailed_pieces_count() < PIECES_PER_PLAYER:
                     game._add_game_event("no_valid_moves", {"player_color": player_color.name, "dice": [d1, d2]})
                     # El jugador deberá pasar el turno. La API llamará a pass_player_turn.
 
