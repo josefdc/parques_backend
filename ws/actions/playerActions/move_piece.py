@@ -15,7 +15,15 @@ async def handle_move_piece(manager: ConnectionManager, payload: dict, room_id: 
         steps_used = payload.get("steps_used")
 
         if not all([piece_uuid, target_square_id is not None, steps_used is not None]):
-            await manager.send_personal_message("Faltan datos en el movimiento.", socket)
+            await manager.send_personal_message(
+                json.dumps({
+                    "action": "error",
+                    "payload": {
+                        "message": "Faltan datos en el movimiento."
+                    }
+                }),
+                socket
+            )
             return
 
         async with httpx.AsyncClient() as client:
@@ -37,25 +45,36 @@ async def handle_move_piece(manager: ConnectionManager, payload: dict, room_id: 
             move_data = response.json()
             color = manager.get_user_color(user_id)
 
-
+            # Se elimina "board" si está presente
             move_data.pop("board", None)
-            
+
             await manager.broadcast(
                 json.dumps({
-                    "event": "piece_move_result",
-                    "data": move_data
+                    "event": "piece_move_result",  # permitido en respuesta
+                    "data": move_data,
+                    "room_id": room_id
                 }),
                 room_id
             )
 
         else:
             await manager.send_personal_message(
-                f"Error al mover la pieza: {response.status_code} - {response.text}",
+                json.dumps({
+                    "action": "error",
+                    "payload": {
+                        "message": f"Error al mover la pieza: {response.status_code} - {response.text}"
+                    }
+                }),
                 socket
             )
 
     except Exception as e:
         await manager.send_personal_message(
-            f"Excepción en move_piece: {str(e)}",
+            json.dumps({
+                "action": "error",
+                "payload": {
+                    "message": f"Excepción en move_piece: {str(e)}"
+                }
+            }),
             socket
         )
