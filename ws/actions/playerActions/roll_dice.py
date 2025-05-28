@@ -41,7 +41,8 @@ async def handle_roll_dice(manager: ConnectionManager, room_id: str, socket: Web
                         "user_id": user_id,
                         "color": color,
                         "dice1": dice1,
-                        "dice2": dice2
+                        "dice2": dice2,
+                        "current_turn": roll_data.get("current_turn")
                     },
                     "room_id": room_id
                 }),
