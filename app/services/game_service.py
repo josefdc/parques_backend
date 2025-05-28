@@ -215,7 +215,8 @@ class GameService:
     ) -> Tuple[GameAggregate, Tuple[int, int], MoveResultType, Dict[str, List[Tuple['SquareId', MoveResultType, int]]]]:
         """
         Maneja el lanzamiento de dados de un jugador, valida el resultado,
-        realiza una salida automática de cárcel si aplica, y calcula movimientos posibles.
+        realiza una salida masiva de cárcel si aplica (todas las fichas con pares), 
+        y calcula movimientos posibles.
 
         Args:
             game_id: UUID de la partida.
@@ -263,52 +264,43 @@ class GameService:
                 # El servicio handle_three_pairs_penalty se llamará después.
                 await self._repository.save(game)
                 return game, (d1, d2), roll_validation_result, {}
+
+            # --- MASSIVE JAIL EXIT LOGIC ---
             is_pairs = (d1 == d2)
-            piece_exited_jail_automatically = False
+            pieces_exited_jail_automatically = False
 
             if is_pairs and player_object.get_jailed_pieces_count() > 0:
-                jailed_pieces = player_object.get_jailed_pieces() # Obtener fichas en cárcel
+                jailed_pieces = player_object.get_jailed_pieces()
+                salida_square_id = game.board.get_salida_square_id_for_color(player_color)
+                salida_square = game.board.get_square(salida_square_id)
                 
-                if jailed_pieces:
-                    # Intentar sacar la primera ficha de la cárcel encontrada
-                    piece_to_auto_exit = jailed_pieces[0] 
+                if salida_square and jailed_pieces:
+                    exited_piece_ids = []
+                    # Move ALL jailed pieces to the starting square
+                    for piece in list(jailed_pieces):  # Create copy to iterate safely
+                        piece.is_in_jail = False
+                        piece.move_to(salida_square_id)
+                        salida_square.add_piece(piece)
+                        exited_piece_ids.append(str(piece.id))
+                    
+                    if exited_piece_ids:
+                        game._add_game_event("massive_jail_exit", {
+                            "player": player_color.name, 
+                            "exited_pieces": exited_piece_ids,
+                            "target_square": salida_square_id
+                        })
+                        pieces_exited_jail_automatically = True
 
-                    # Validar si la ficha puede salir (casilla de salida no llena)
-                    # Se usa _validate_single_move_attempt con steps=0 para la lógica de salida de cárcel
-                    exit_check_result_type, exit_target_square_id = self._validator._validate_single_move_attempt(
-                        game=game,
-                        piece_to_move=piece_to_auto_exit,
-                        steps=0,  # Indica intento de salida de cárcel
-                        is_roll_pairs=True # Sabemos que es un par
-                    )
+                        # REGLA: Si se saca de cárcel con pares, se vuelve a tirar.
+                        # Reseteamos dice_roll_count para permitir otro tiro en este turno.
+                        game.dice_roll_count = 0 
+                        game._add_game_event("player_rolls_again_after_massive_jail_exit", {"player": player_color.name})
 
-                    if exit_check_result_type == MoveResultType.JAIL_EXIT_SUCCESS and exit_target_square_id is not None:
-                        # Sí puede salir, realizar el movimiento automáticamente
-                        salida_square = game.board.get_square(exit_target_square_id)
-                        if salida_square: # Debería existir si JAIL_EXIT_SUCCESS
-                            # La ficha estaba en cárcel (position = None)
-                            piece_to_auto_exit.is_in_jail = False # Actualizar estado de la ficha
-                            piece_to_auto_exit.move_to(exit_target_square_id) # Actualizar posición de la ficha
-                            salida_square.add_piece(piece_to_auto_exit) # Añadir al nuevo square
-                            
-                            game._add_game_event("automatic_jail_exit", {
-                                "player": player_color.name, 
-                                "piece_id": str(piece_to_auto_exit.id), 
-                                "target_square": exit_target_square_id
-                            })
-                            piece_exited_jail_automatically = True
-
-                            # REGLA: Si se sale de cárcel con pares, se vuelve a tirar.
-                            # Reseteamos dice_roll_count para permitir otro tiro en este turno.
-                            # player_object.consecutive_pairs_count ya está incrementado por validate_and_process_roll.
-                            game.dice_roll_count = 0 
-                            game._add_game_event("player_rolls_again_after_auto_jail_exit", {"player": player_color.name})
-
-            # Calcular movimientos posibles DESPUÉS de la posible salida automática
+            # Calcular movimientos posibles DESPUÉS de la posible salida masiva
             possible_moves = self._validator.get_possible_moves(game, player_color, d1, d2)
             
-            # Log si no hay movimientos posibles (y no fue salida automática que permita nuevo tiro)
-            if not possible_moves and not (piece_exited_jail_automatically and game.dice_roll_count == 0):
+            # Log si no hay movimientos posibles (y no fue salida masiva que permita nuevo tiro)
+            if not possible_moves and not (pieces_exited_jail_automatically and game.dice_roll_count == 0):
                 # Solo se considera "sin movimientos válidos" si no se activó la regla de volver a tirar.
                 # Y si el jugador tiene fichas fuera de la cárcel (no está obligado a pasar por tener todo en cárcel sin pares)
                 if player_object.get_jailed_pieces_count() < PIECES_PER_PLAYER:
@@ -631,5 +623,3 @@ class GameService:
             if p_obj.user_id == user_id:
                 return color_enum, p_obj
         raise PlayerNotInGameError(user_id, game.id)
-
-    # --- Otros métodos podrían ser necesarios (ej. get_game_state, etc.) ---

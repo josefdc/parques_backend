@@ -63,6 +63,8 @@ class MoveValidator:
         d2: int
     ) -> Dict[str, List[Tuple['SquareId', MoveResultType, int]]]:
         """Returns all possible moves for a player given a dice roll.
+        
+        Assumes jail exit has already been handled by GameService.
 
         Args:
             game: Current game instance.
@@ -82,44 +84,35 @@ class MoveValidator:
         is_pairs = (d1 == d2)
 
         for piece in player.pieces:
-            if piece.has_reached_cielo:
+            # Skip pieces in jail or cielo - jail exit is handled by GameService
+            if piece.has_reached_cielo or piece.is_in_jail:
                 continue
 
             current_piece_options: List[Tuple[SquareId, MoveResultType, int]] = []
+            
+            # Calculate movement options for pieces on the board
+            dice_steps_to_evaluate: List[int] = []
+            if is_pairs:
+                dice_steps_to_evaluate.append(d1 + d2)
+            else:
+                dice_steps_to_evaluate.append(d1)
+                dice_steps_to_evaluate.append(d2)
+                if d1 != d2:
+                    dice_steps_to_evaluate.append(d1 + d2)
+            
+            unique_steps = sorted(list(set(s for s in dice_steps_to_evaluate if s > 0)), reverse=True)
 
-            if piece.is_in_jail and is_pairs:
+            for steps in unique_steps:
                 validation_result, target_id = self._validate_single_move_attempt(
                     game=game,
                     piece_to_move=piece,
-                    steps=0,
-                    is_roll_pairs=True
+                    steps=steps,
+                    is_roll_pairs=is_pairs
                 )
-                if validation_result == MoveResultType.JAIL_EXIT_SUCCESS and target_id is not None:
-                    current_piece_options.append((target_id, validation_result, 0))
-
-            elif not piece.is_in_jail:
-                dice_steps_to_evaluate: List[int] = []
-                if is_pairs:
-                    dice_steps_to_evaluate.append(d1 + d2)
-                else:
-                    dice_steps_to_evaluate.append(d1)
-                    dice_steps_to_evaluate.append(d2)
-                    if d1 != d2:
-                        dice_steps_to_evaluate.append(d1 + d2)
-                
-                unique_steps = sorted(list(set(s for s in dice_steps_to_evaluate if s > 0)), reverse=True)
-
-                for steps in unique_steps:
-                    validation_result, target_id = self._validate_single_move_attempt(
-                        game=game,
-                        piece_to_move=piece,
-                        steps=steps,
-                        is_roll_pairs=is_pairs
-                    )
-                    if validation_result not in [MoveResultType.INVALID_PIECE, MoveResultType.INVALID_ROLL] and target_id is not None:
-                        current_piece_options.append((target_id, validation_result, steps))
-                    elif validation_result == MoveResultType.EXACT_ROLL_NEEDED and target_id is not None:
-                         current_piece_options.append((target_id, validation_result, steps))
+                if validation_result not in [MoveResultType.INVALID_PIECE, MoveResultType.INVALID_ROLL] and target_id is not None:
+                    current_piece_options.append((target_id, validation_result, steps))
+                elif validation_result == MoveResultType.EXACT_ROLL_NEEDED and target_id is not None:
+                     current_piece_options.append((target_id, validation_result, steps))
 
             if current_piece_options:
                 possible_moves_for_player[str(piece.id)] = current_piece_options
