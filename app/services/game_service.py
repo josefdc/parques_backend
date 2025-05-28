@@ -216,7 +216,8 @@ class GameService:
         """
         Maneja el lanzamiento de dados de un jugador, valida el resultado,
         realiza una salida masiva de cárcel si aplica (todas las fichas con pares), 
-        y calcula movimientos posibles.
+        y calcula movimientos posibles. Incluye la regla de 3 intentos para jugadores
+        atrapados en la cárcel.
 
         Args:
             game_id: UUID de la partida.
@@ -244,11 +245,20 @@ class GameService:
                 raise GameServiceError("La partida no está en curso.")
             if game.current_turn_color != player_color:
                 raise NotPlayerTurnError(user_id, game_id)
-            # Check if player can roll:
-            # Player can roll if dice_roll_count is 0 (first roll of their turn part)
-            # OR if they got pairs and are eligible for another roll (consecutive_pairs_count is 1 or 2)
-            if game.dice_roll_count > 0 and not (player_object.consecutive_pairs_count > 0 and player_object.consecutive_pairs_count < 3):
-                raise GameServiceError("Ya has lanzado los dados en este turno o debes mover primero.")
+            
+            # Determinar si el jugador está atrapado en la cárcel
+            is_stuck_in_jail = player_object.get_jailed_pieces_count() == PIECES_PER_PLAYER
+            
+            # Validar si el jugador puede lanzar los dados
+            can_roll_again_on_pairs = player_object.consecutive_pairs_count > 0 and player_object.consecutive_pairs_count < 3
+            
+            if game.dice_roll_count > 0 and not can_roll_again_on_pairs:
+                # Si ya lanzó y no fue un par, solo puede volver a lanzar si está atrapado en la cárcel
+                if not is_stuck_in_jail:
+                    raise GameServiceError("Ya has lanzado los dados en este turno o debes mover primero.")
+                # Si está atrapado, se le permiten más intentos (hasta 3)
+                elif game.dice_roll_count >= 3:
+                    raise GameServiceError("Ya has usado tus 3 intentos para salir de la cárcel. Debes pasar el turno.")
 
             d1, d2 = self._dice.roll()
             game.last_dice_roll = (d1, d2) # GUARDAR EL TIRO
@@ -295,6 +305,26 @@ class GameService:
                         # Reseteamos dice_roll_count para permitir otro tiro en este turno.
                         game.dice_roll_count = 0 
                         game._add_game_event("player_rolls_again_after_massive_jail_exit", {"player": player_color.name})
+
+            # --- AUTOMATIC TURN PASS FOR 3 FAILED ATTEMPTS ---
+            # Si el jugador está atrapado, no sacó par y ya usó sus 3 intentos
+            elif is_stuck_in_jail and not is_pairs and game.dice_roll_count >= 3:
+                # El jugador ha fallado su último intento. Pasamos el turno automáticamente.
+                game._add_game_event("player_failed_three_jail_attempts", {
+                    "player_color": player_color.name,
+                    "attempts": game.dice_roll_count
+                })
+                
+                # Reset player's consecutive pairs count as they are losing the turn
+                player_object.reset_consecutive_pairs()
+                
+                # Advance to the next player
+                game.next_turn()
+                game.last_dice_roll = None
+                game.dice_roll_count = 0
+                
+                await self._repository.save(game)
+                return game, (d1, d2), roll_validation_result, {}
 
             # Calcular movimientos posibles DESPUÉS de la posible salida masiva
             possible_moves = self._validator.get_possible_moves(game, player_color, d1, d2)
