@@ -214,41 +214,45 @@ class Board:
             return None
 
         if isinstance(current_square_id, int):
-            entrada_pasillo_propia = ENTRADA_PASILLO_INDICES[piece_color]
-            pos_actual_pista = current_square_id
+            # Lógica para fichas en la pista principal
+            entrada_pasillo_id = self.get_entrada_pasillo_square_id_for_color(piece_color)
             
-            for i in range(1, steps + 1):
-                next_pos_pista = (pos_actual_pista + 1) % NUM_MAIN_TRACK_SQUARES
-                if next_pos_pista == entrada_pasillo_propia:
-                    pasos_restantes = steps - i
-                    if pasos_restantes >= 0:
-                        if pasos_restantes == 0:
-                            return ('pas', piece_color, 0)
-                        else:
-                            if pasos_restantes <= PASSAGEWAY_LENGTH:
-                                return ('pas', piece_color, pasos_restantes - 1)
-                            else:
-                                return None 
-                pos_actual_pista = next_pos_pista
-            
-            return pos_actual_pista
+            # Calcular distancia a la casilla de entrada al pasillo
+            dist_to_entrada = (entrada_pasillo_id - current_square_id + NUM_MAIN_TRACK_SQUARES) % NUM_MAIN_TRACK_SQUARES
+
+            if steps > dist_to_entrada:
+                # La ficha cruza la entrada de su pasillo
+                pasos_restantes_en_pasillo = steps - dist_to_entrada
+                if pasos_restantes_en_pasillo <= PASSAGEWAY_LENGTH:
+                    # El índice en el pasillo es el número de pasos restantes menos 1
+                    return ('pas', piece_color, pasos_restantes_en_pasillo - 1)
+                else:
+                    # Se pasó de la meta, movimiento inválido
+                    return None
+            else:
+                # El movimiento se mantiene en la pista principal
+                return (current_square_id + steps) % NUM_MAIN_TRACK_SQUARES
 
         elif isinstance(current_square_id, tuple) and current_square_id[0] == 'pas':
+            # Lógica para fichas ya en el pasillo final
             _, pasillo_color, k = current_square_id
             
             if pasillo_color != piece_color:
-                return None 
+                return None  # No debería ocurrir en un juego normal
 
             target_k = k + steps
             
             if target_k < PASSAGEWAY_LENGTH:
                 return ('pas', piece_color, target_k)
             elif target_k == PASSAGEWAY_LENGTH:
+                # Exactamente un paso más allá de la última casilla del pasillo es llegar al cielo
                 return self.cielo_square_id
             else:
+                # Se pasó del cielo, movimiento inválido
                 return None
         
         elif current_square_id == self.cielo_square_id:
+            # No se puede mover desde el cielo
             return None
 
-        return None
+        return None  # Fallback
