@@ -174,11 +174,16 @@ class MoveValidator:
         other_color_pieces_at_target = target_square.get_other_color_pieces(piece_to_move.color)
 
         if other_color_pieces_at_target:
-            is_target_safe_for_mover = target_square.is_safe_square_for_piece(piece_to_move.color)
+            # There are pieces of another color. Is the square safe for THEM?
+            defending_piece = other_color_pieces_at_target[0]
+            is_target_safe_for_defender = target_square.is_safe_square_for_piece(defending_piece.color)
             
-            if not is_target_safe_for_mover:
-                return MoveResultType.CAPTURE, target_square_id
-            else:
+            if is_target_safe_for_defender:
+                # The defending piece is on a safe square. Cannot capture, pieces coexist.
                 return MoveResultType.OK, target_square_id
+            else:
+                # The defending piece is NOT on a safe square. This is a capture.
+                return MoveResultType.CAPTURE, target_square_id
         else:
+            # The square is empty or only has own pieces. Movement OK.
             return MoveResultType.OK, target_square_id
