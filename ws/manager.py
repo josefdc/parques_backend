@@ -26,8 +26,31 @@ class ConnectionManager:
         for room_id, connections in self.rooms.items():
             if websocket in connections:
                 connections.remove(websocket)
+                
+                # Eliminar user_id asociado
+                self.user_ids.pop(websocket, None)
+
+                # Verificar si la sala quedó vacía
+                if not connections:
+                    self.cleanup_room(room_id)
                 break
-        self.user_ids.pop(websocket, None)
+
+    def cleanup_room(self, room_id: str):
+        print(f"Cleaning up room: {room_id}")
+
+        # Eliminar la sala y todos sus datos asociados
+        self.rooms.pop(room_id, None)
+        self.room_color_index.pop(room_id, None)
+        self.room_game_map.pop(room_id, None)
+        self.room_creators.pop(room_id, None)
+
+        # También puedes eliminar colores de usuarios que estaban en esa sala (opcional)
+        user_ids_to_remove = [
+            user_id for ws, user_id in self.user_ids.items()
+            if ws not in self.get_room_connections(room_id)
+        ]
+        for user_id in user_ids_to_remove:
+            self.user_colors.pop(user_id, None)
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
